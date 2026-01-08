@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/app_state.dart';
+import '../services/firestore_service.dart';
+import '../services/auth_service.dart';
 import 'activity_history_screen.dart';
 import 'settings_screen.dart';
 import 'onboarding_screen.dart';
@@ -14,11 +16,25 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _appState = AppState();
+  final _firestoreService = FirestoreService();
+  final _authService = AuthService();
+  Map<String, dynamic>? _userData;
 
   @override
   void initState() {
     super.initState();
     _appState.addListener(_onStateChanged);
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final userId = _firestoreService.currentUserId;
+    if (userId != null) {
+      final data = await _firestoreService.getUserData(userId);
+      if (mounted) {
+        setState(() => _userData = data);
+      }
+    }
   }
 
   @override
@@ -58,6 +74,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildProfileHeader(BuildContext context) {
     final completionPercent = _appState.profileCompletion;
+    final userName = _userData?['name'] ?? _appState.userName;
     
     return Container(
       padding: const EdgeInsets.all(24),
@@ -85,7 +102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          Text(_appState.userName, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(userName, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text('Bergabung sejak Januari 2026', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
           const SizedBox(height: 16),
@@ -392,6 +409,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
+              await _authService.logout();
               await _appState.logout();
               if (context.mounted) {
                 Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const OnboardingScreen()), (route) => false);

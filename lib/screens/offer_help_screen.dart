@@ -4,6 +4,7 @@ import '../data/dummy_data.dart';
 import '../widgets/help_card.dart';
 import '../models/help_request.dart';
 import '../services/location_service.dart';
+import '../services/firestore_service.dart';
 import 'request_detail_screen.dart';
 
 class OfferHelpScreen extends StatefulWidget {
@@ -18,31 +19,32 @@ class _OfferHelpScreenState extends State<OfferHelpScreen> {
   final List<String> _filters = ['Semua', 'Terdekat', 'Terbaru', 'Gratis', 'Seikhlasnya'];
   HelpCategory? _selectedCategory;
   final _locationService = LocationService();
+  final _firestoreService = FirestoreService();
   bool _isLoadingLocation = false;
 
-  List<HelpRequest> get _filteredRequests {
-    var requests = DummyData.helpRequests.where((r) => r.status == HelpStatus.open).toList();
+  List<HelpRequest> _filterRequests(List<HelpRequest> requests) {
+    var filtered = requests.where((r) => r.status == HelpStatus.open).toList();
     
     if (_selectedCategory != null) {
-      requests = requests.where((r) => r.category == _selectedCategory).toList();
+      filtered = filtered.where((r) => r.category == _selectedCategory).toList();
     }
     
     switch (_selectedFilter) {
       case 'Gratis':
-        requests = requests.where((r) => r.priceType == PriceType.free).toList();
+        filtered = filtered.where((r) => r.priceType == PriceType.free).toList();
         break;
       case 'Seikhlasnya':
-        requests = requests.where((r) => r.priceType == PriceType.voluntary).toList();
+        filtered = filtered.where((r) => r.priceType == PriceType.voluntary).toList();
         break;
       case 'Terbaru':
-        requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         break;
       case 'Terdekat':
-        _sortByDistance(requests);
+        _sortByDistance(filtered);
         break;
     }
     
-    return requests;
+    return filtered;
   }
 
   void _sortByDistance(List<HelpRequest> requests) {
@@ -71,39 +73,49 @@ class _OfferHelpScreenState extends State<OfferHelpScreen> {
     final cardColor = AppTheme.getCardColor(context);
     
     return SafeArea(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(textPrimary, textSecondary),
-                const SizedBox(height: 20),
-                _buildMotivationCard(),
-                const SizedBox(height: 20),
-                _buildCategoryFilter(cardColor, textPrimary),
-                const SizedBox(height: 16),
-                _buildFilterChips(cardColor, textSecondary),
-              ],
-            ),
-          ),
-          Expanded(
-            child: _filteredRequests.isEmpty
-                ? _buildEmptyState(textPrimary, textSecondary)
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: _filteredRequests.length,
-                    itemBuilder: (context, index) {
-                      final request = _filteredRequests[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: _buildEnhancedHelpCard(request, cardColor, textPrimary, textSecondary),
-                      );
-                    },
-                  ),
-          ),
-        ],
+      child: StreamBuilder<List<HelpRequest>>(
+        stream: _firestoreService.getOpenRequests(),
+        builder: (context, snapshot) {
+          final allRequests = snapshot.data ?? [];
+          final filteredRequests = _filterRequests(allRequests);
+          
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(textPrimary, textSecondary),
+                    const SizedBox(height: 20),
+                    _buildMotivationCard(filteredRequests.length),
+                    const SizedBox(height: 20),
+                    _buildCategoryFilter(cardColor, textPrimary),
+                    const SizedBox(height: 16),
+                    _buildFilterChips(cardColor, textSecondary),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: snapshot.connectionState == ConnectionState.waiting && allRequests.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : filteredRequests.isEmpty
+                        ? _buildEmptyState(textPrimary, textSecondary)
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            itemCount: filteredRequests.length,
+                            itemBuilder: (context, index) {
+                              final request = filteredRequests[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: _buildEnhancedHelpCard(request, cardColor, textPrimary, textSecondary),
+                              );
+                            },
+                          ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -131,7 +143,7 @@ class _OfferHelpScreenState extends State<OfferHelpScreen> {
     );
   }
 
-  Widget _buildMotivationCard() {
+  Widget _buildMotivationCard(int count) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -162,7 +174,7 @@ class _OfferHelpScreenState extends State<OfferHelpScreen> {
                     children: [
                       const Icon(Icons.track_changes, color: Colors.white, size: 14),
                       const SizedBox(width: 4),
-                      Text('${_filteredRequests.length} orang butuh bantuanmu', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                      Text('$count orang butuh bantuanmu', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),

@@ -7,6 +7,7 @@ import '../utils/currency_formatter.dart';
 import '../widgets/loading_overlay.dart';
 import '../services/location_service.dart';
 import '../services/pricing_service.dart';
+import '../services/firestore_service.dart';
 
 class RequestHelpScreen extends StatefulWidget {
   const RequestHelpScreen({super.key});
@@ -23,6 +24,7 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
   final _budgetController = TextEditingController();
   final _locationService = LocationService();
   final _pricingService = PricingService();
+  final _firestoreService = FirestoreService();
   
   int _selectedCategory = 0;
   PriceType _selectedPriceType = PriceType.voluntary;
@@ -938,61 +940,63 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
   void _submitRequest() async {
     setState(() => _isLoading = true);
     
-    await Future.delayed(const Duration(seconds: 1));
-    
     final category = DummyData.categories[_selectedCategory];
-    final newRequest = HelpRequest(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      userId: 'currentUser',
-      userName: 'Pengguna Baik Hati',
-      userAvatar: Icons.person,
+    final budget = parseCurrency(_budgetController.text)?.toDouble();
+    
+    final requestId = await _firestoreService.createHelpRequest(
       title: _titleController.text,
       description: _descriptionController.text,
       category: category['category'] as HelpCategory,
-      status: HelpStatus.open,
-      createdAt: DateTime.now(),
+      priceType: _selectedPriceType,
+      budget: budget,
       location: _locationController.text.isNotEmpty ? _locationController.text : null,
       latitude: _latitude,
       longitude: _longitude,
-      priceType: _selectedPriceType,
-      budget: parseCurrency(_budgetController.text),
       acceptedPayments: _selectedPayments,
     );
-    
-    DummyData.helpRequests.insert(0, newRequest);
     
     setState(() => _isLoading = false);
     
     if (!mounted) return;
     
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: AppTheme.accentColor.withValues(alpha: 0.1), shape: BoxShape.circle),
-              child: Icon(Icons.check_circle, size: 48, color: AppTheme.accentColor),
-            ),
-            const SizedBox(height: 16),
-            const Text('Permintaan Terkirim! 🎉', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-            const SizedBox(height: 12),
-            Text('Tunggu penawaran dari penolong ya!', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondary)),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _resetForm();
-              },
-              child: const Text('Tutup'),
-            ),
-          ],
+    if (requestId != null) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: AppTheme.accentColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+                child: Icon(Icons.check_circle, size: 48, color: AppTheme.accentColor),
+              ),
+              const SizedBox(height: 16),
+              const Text('Permintaan Terkirim!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+              const SizedBox(height: 12),
+              Text('Tunggu penawaran dari penolong ya!', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondary)),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _resetForm();
+                },
+                child: const Text('Tutup'),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Gagal mengirim permintaan. Coba lagi.'),
+          backgroundColor: AppTheme.secondaryColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   void _resetForm() {

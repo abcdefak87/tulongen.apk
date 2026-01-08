@@ -6,6 +6,7 @@ import '../widgets/category_chip.dart';
 import '../widgets/empty_state.dart';
 import '../models/help_request.dart';
 import '../services/app_state.dart';
+import '../services/firestore_service.dart';
 import 'request_detail_screen.dart';
 import 'notifications_screen.dart';
 
@@ -20,22 +21,22 @@ class _HomeScreenState extends State<HomeScreen> {
   int selectedCategoryIndex = -1;
   String _searchQuery = '';
   final _searchController = TextEditingController();
-  bool _isRefreshing = false;
   final _appState = AppState();
+  final _firestoreService = FirestoreService();
 
-  List<HelpRequest> get _filteredRequests {
-    var requests = DummyData.helpRequests.toList();
+  List<HelpRequest> _filterRequests(List<HelpRequest> requests) {
+    var filtered = requests.toList();
     
     // Filter by category
     if (selectedCategoryIndex != -1) {
       final selectedCategory = DummyData.categories[selectedCategoryIndex]['category'] as HelpCategory;
-      requests = requests.where((r) => r.category == selectedCategory).toList();
+      filtered = filtered.where((r) => r.category == selectedCategory).toList();
     }
     
     // Filter by search
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
-      requests = requests.where((r) =>
+      filtered = filtered.where((r) =>
         r.title.toLowerCase().contains(query) ||
         r.description.toLowerCase().contains(query) ||
         r.userName.toLowerCase().contains(query) ||
@@ -44,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ).toList();
     }
     
-    return requests;
+    return filtered;
   }
 
   @override
@@ -54,9 +55,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _onRefresh() async {
-    setState(() => _isRefreshing = true);
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() => _isRefreshing = false);
+    setState(() {});
+    await Future.delayed(const Duration(milliseconds: 500));
   }
 
   @override
@@ -69,35 +69,48 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _onRefresh,
-          color: AppTheme.primaryColor,
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(textPrimary, textSecondary, cardColor),
-                      const SizedBox(height: 24),
-                      _buildSearchBar(cardColor, textSecondary),
-                      const SizedBox(height: 24),
-                      _buildStatsCard(),
-                      const SizedBox(height: 24),
-                      _buildCategorySection(textPrimary, textSecondary),
-                      const SizedBox(height: 24),
-                      _buildRequestHeader(textPrimary, textSecondary),
-                      const SizedBox(height: 4),
-                    ],
+        child: StreamBuilder<List<HelpRequest>>(
+          stream: _firestoreService.getOpenRequests(),
+          builder: (context, snapshot) {
+            final allRequests = snapshot.data ?? [];
+            final filteredRequests = _filterRequests(allRequests);
+            
+            return RefreshIndicator(
+              onRefresh: _onRefresh,
+              color: AppTheme.primaryColor,
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(textPrimary, textSecondary, cardColor),
+                          const SizedBox(height: 24),
+                          _buildSearchBar(cardColor, textSecondary),
+                          const SizedBox(height: 24),
+                          _buildStatsCard(),
+                          const SizedBox(height: 24),
+                          _buildCategorySection(textPrimary, textSecondary),
+                          const SizedBox(height: 24),
+                          _buildRequestHeader(textPrimary, textSecondary, filteredRequests.length),
+                          const SizedBox(height: 4),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                  if (snapshot.connectionState == ConnectionState.waiting && allRequests.isEmpty)
+                    const SliverFillRemaining(
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else
+                    _buildRequestList(filteredRequests),
+                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                ],
               ),
-              _buildRequestList(),
-              const SliverToBoxAdapter(child: SizedBox(height: 20)),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -267,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildRequestHeader(Color textPrimary, Color textSecondary) {
+  Widget _buildRequestHeader(Color textPrimary, Color textSecondary, int count) {
     return Column(
       children: [
         Row(
@@ -282,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(color: AppTheme.secondaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                  child: Text('${_filteredRequests.length}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.secondaryColor)),
+                  child: Text('$count', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.secondaryColor)),
                 ),
               ],
             ),
@@ -327,8 +340,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildRequestList() {
-    if (_filteredRequests.isEmpty) {
+  Widget _buildRequestList(List<HelpRequest> requests) {
+    if (requests.isEmpty) {
       return SliverFillRemaining(
         child: EmptyState(
           icon: Icons.search_off,
@@ -345,9 +358,9 @@ class _HomeScreenState extends State<HomeScreen> {
         delegate: SliverChildBuilderDelegate(
           (context, index) => Padding(
             padding: const EdgeInsets.only(bottom: 16),
-            child: HelpCard(request: _filteredRequests[index], onTap: () => _navigateToDetail(_filteredRequests[index])),
+            child: HelpCard(request: requests[index], onTap: () => _navigateToDetail(requests[index])),
           ),
-          childCount: _filteredRequests.length,
+          childCount: requests.length,
         ),
       ),
     );

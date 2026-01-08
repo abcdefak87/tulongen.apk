@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../data/dummy_data.dart';
 import '../models/help_request.dart';
+import '../services/firestore_service.dart';
 
 class ActivityHistoryScreen extends StatefulWidget {
   const ActivityHistoryScreen({super.key});
@@ -12,6 +12,7 @@ class ActivityHistoryScreen extends StatefulWidget {
 
 class _ActivityHistoryScreenState extends State<ActivityHistoryScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final _firestoreService = FirestoreService();
 
   @override
   void initState() {
@@ -62,51 +63,90 @@ class _ActivityHistoryScreenState extends State<ActivityHistoryScreen> with Sing
   }
 
   Widget _buildRequestsList(BuildContext context) {
-    final myRequests = DummyData.helpRequests.take(3).toList();
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: myRequests.length,
-      itemBuilder: (context, index) {
-        final request = myRequests[index];
-        return _buildActivityCard(
-          context,
-          icon: request.categoryIcon,
-          color: _getCategoryColor(request.category),
-          title: request.title,
-          subtitle: request.location ?? 'Online',
-          status: request.status,
-          date: request.timeAgo,
-          isRequest: true,
+    return StreamBuilder<List<HelpRequest>>(
+      stream: _firestoreService.getMyRequests(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        final myRequests = snapshot.data ?? [];
+        
+        if (myRequests.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.inbox_outlined, size: 64, color: AppTheme.getTextSecondary(context)),
+                const SizedBox(height: 16),
+                Text('Belum ada permintaan', style: TextStyle(color: AppTheme.getTextSecondary(context))),
+              ],
+            ),
+          );
+        }
+        
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: myRequests.length,
+          itemBuilder: (context, index) {
+            final request = myRequests[index];
+            return _buildActivityCard(
+              context,
+              icon: request.categoryIcon,
+              color: _getCategoryColor(request.category),
+              title: request.title,
+              subtitle: request.location ?? 'Online',
+              status: request.status,
+              date: request.timeAgo,
+              isRequest: true,
+            );
+          },
         );
       },
     );
   }
 
   Widget _buildHelpsList(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildActivityCard(
-          context,
-          icon: Icons.coffee_rounded,
-          color: const Color(0xFF8B4513),
-          title: 'Titip beli kopi Starbucks',
-          subtitle: 'Kemang, Jakarta',
-          status: HelpStatus.completed,
-          date: '2 hari lalu',
-          isRequest: false,
-        ),
-        _buildActivityCard(
-          context,
-          icon: Icons.shopping_bag_rounded,
-          color: const Color(0xFFFF9F43),
-          title: 'Titip beli Mixue',
-          subtitle: 'Tebet, Jakarta',
-          status: HelpStatus.completed,
-          date: '5 hari lalu',
-          isRequest: false,
-        ),
-      ],
+    return StreamBuilder<List<HelpRequest>>(
+      stream: _firestoreService.getMyHelping(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        final myHelps = snapshot.data ?? [];
+        
+        if (myHelps.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.volunteer_activism_outlined, size: 64, color: AppTheme.getTextSecondary(context)),
+                const SizedBox(height: 16),
+                Text('Belum ada bantuan', style: TextStyle(color: AppTheme.getTextSecondary(context))),
+              ],
+            ),
+          );
+        }
+        
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: myHelps.length,
+          itemBuilder: (context, index) {
+            final request = myHelps[index];
+            return _buildActivityCard(
+              context,
+              icon: request.categoryIcon,
+              color: _getCategoryColor(request.category),
+              title: request.title,
+              subtitle: request.location ?? 'Online',
+              status: request.status,
+              date: request.timeAgo,
+              isRequest: false,
+            );
+          },
+        );
+      },
     );
   }
 
