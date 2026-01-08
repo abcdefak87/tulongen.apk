@@ -17,26 +17,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     OnboardingData(
       icon: Icons.handshake_rounded,
       title: 'Selamat Datang di\nTULONGEN',
-      subtitle: 'Platform saling bantu untuk Gen Z Indonesia.\nTulong = minta bantuan\nNulong = membantu!',
       color: AppTheme.primaryColor,
     ),
     OnboardingData(
       icon: Icons.location_on_rounded,
       title: 'Temukan Bantuan\nTerdekat',
-      subtitle: 'Cari orang yang butuh bantuan di sekitarmu atau minta tolong ke komunitas terdekat.',
       color: AppTheme.accentColor,
     ),
     OnboardingData(
       icon: Icons.payments_rounded,
       title: 'Ongkos Fleksibel\n& Transparan',
-      subtitle: 'Gratis, seikhlasnya, atau nego.\nLebih murah dari ojol karena ini tolong-menolong!',
       color: AppTheme.secondaryColor,
-    ),
-    OnboardingData(
-      icon: Icons.emoji_events_rounded,
-      title: 'Kumpulkan Badge\n& Reputasi',
-      subtitle: 'Semakin sering membantu, semakin tinggi reputasimu di komunitas!',
-      color: const Color(0xFFFFD93D),
     ),
   ];
 
@@ -109,7 +100,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             builder: (context, value, child) => Transform.scale(
               scale: value,
               child: Container(
-                padding: const EdgeInsets.all(44),
+                padding: const EdgeInsets.all(48),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [data.color.withValues(alpha: 0.25), data.color.withValues(alpha: 0.08)],
@@ -122,20 +113,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ],
                   border: Border.all(color: data.color.withValues(alpha: 0.15), width: 2),
                 ),
-                child: Icon(data.icon, size: 72, color: data.color),
+                child: Icon(data.icon, size: 80, color: data.color),
               ),
             ),
           ),
-          const SizedBox(height: 52),
+          const SizedBox(height: 56),
           Text(
             data.title,
-            style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: textPrimary, height: 1.25),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          Text(
-            data.subtitle,
-            style: TextStyle(fontSize: 16, color: textSecondary, height: 1.7),
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: textPrimary, height: 1.2),
             textAlign: TextAlign.center,
           ),
         ],
@@ -226,8 +211,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 class OnboardingData {
   final IconData icon;
   final String title;
-  final String subtitle;
   final Color color;
 
-  OnboardingData({required this.icon, required this.title, required this.subtitle, required this.color});
+  OnboardingData({required this.icon, required this.title, required this.color});
 }

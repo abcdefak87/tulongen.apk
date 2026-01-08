@@ -19,7 +19,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
   bool _locationEnabled = true;
   String _language = 'Indonesia';
-  bool _isLoading = false;
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -51,18 +50,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final textPrimary = AppTheme.getTextPrimary(context);
     final textSecondary = AppTheme.getTextSecondary(context);
 
-    return LoadingOverlay(
-      isLoading: _isLoading,
-      message: 'Memproses...',
-      child: Scaffold(
-        backgroundColor: bgColor,
-        appBar: AppBar(
-          title: Text('Pengaturan', style: TextStyle(color: textPrimary)),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          iconTheme: IconThemeData(color: textPrimary),
-        ),
-        body: ListView(
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        title: Text('Pengaturan', style: TextStyle(color: textPrimary)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: IconThemeData(color: textPrimary),
+      ),
+      body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
             _buildSectionTitle('Notifikasi', textPrimary),
@@ -157,7 +153,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 20),
           ],
         ),
-      ),
     );
   }
 
@@ -439,14 +434,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _deleteAccount(String password) async {
-    setState(() => _isLoading = true);
+    // Show beautiful deleting dialog
+    showDeletingDialog(context, title: 'Menghapus Akun', message: 'Mohon tunggu, sedang menghapus data...');
     
     // Re-authenticate first
     final reAuthResult = await _authService.reauthenticate(password);
     
     if (!reAuthResult.success) {
-      setState(() => _isLoading = false);
       if (!mounted) return;
+      hideLoadingDialog(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(reAuthResult.error ?? 'Password salah'),
@@ -460,9 +456,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Delete account
     final deleteResult = await _authService.deleteAccount();
     
-    setState(() => _isLoading = false);
-    
     if (!mounted) return;
+    hideLoadingDialog(context);
     
     if (deleteResult.success) {
       await _appState.logout();
