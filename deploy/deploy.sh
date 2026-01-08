@@ -9,10 +9,10 @@ set -e
 APP_NAME="tulongen"
 VERSION="1.0.0"
 SERVER_USER="root"
-SERVER_HOST="100.90.233.124"
+SERVER_HOST="172.17.2.3"
 SERVER_PATH="/var/www/tulongen"
 APK_SOURCE="build/app/outputs/flutter-apk/app-release.apk"
-DOMAIN="100.90.233.124"
+DOMAIN="172.17.2.3"
 
 # ============ WARNA OUTPUT ============
 RED='\033[0;31m'
