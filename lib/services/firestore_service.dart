@@ -27,11 +27,14 @@ class FirestoreService {
     double? longitude,
     List<PaymentMethod> acceptedPayments = const [PaymentMethod.cash],
   }) async {
-    if (currentUserId == null) return null;
+    if (currentUserId == null) {
+      debugPrint('createHelpRequest: No user logged in');
+      return null;
+    }
     
     try {
       final userData = await getUserData(currentUserId!);
-      final doc = await _db.collection('requests').add({
+      final data = {
         'userId': currentUserId,
         'userName': userData?['name'] ?? 'User',
         'title': title,
@@ -45,21 +48,35 @@ class FirestoreService {
         'acceptedPayments': acceptedPayments.map((p) => p.name).toList(),
         'status': HelpStatus.open.name,
         'createdAt': FieldValue.serverTimestamp(),
-      });
+      };
+      debugPrint('createHelpRequest: Creating with data: $data');
+      final doc = await _db.collection('requests').add(data);
+      debugPrint('createHelpRequest: Created with ID: ${doc.id}');
       return doc.id;
     } catch (e) {
+      debugPrint('createHelpRequest error: $e');
       return null;
     }
   }
 
   // Get all open help requests (for home screen)
+  // Note: This query requires a composite index in Firestore
+  // If index doesn't exist, it will fall back to client-side sorting
   Stream<List<HelpRequest>> getOpenRequests() {
     return _db
         .collection('requests')
         .where('status', isEqualTo: HelpStatus.open.name)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => _docToHelpRequest(doc)).toList());
+        .handleError((error) {
+          debugPrint('Error getting open requests: $error');
+        })
+        .map((snapshot) {
+          debugPrint('Got ${snapshot.docs.length} open requests');
+          final requests = snapshot.docs.map((doc) => _docToHelpRequest(doc)).toList();
+          // Sort client-side to avoid needing composite index
+          requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return requests;
+        });
   }
 
   // Get requests by category
@@ -68,9 +85,12 @@ class FirestoreService {
         .collection('requests')
         .where('status', isEqualTo: HelpStatus.open.name)
         .where('category', isEqualTo: category.name)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => _docToHelpRequest(doc)).toList());
+        .map((snapshot) {
+          final requests = snapshot.docs.map((doc) => _docToHelpRequest(doc)).toList();
+          requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return requests;
+        });
   }
 
   // Get my requests (yang saya buat)
@@ -79,9 +99,12 @@ class FirestoreService {
     return _db
         .collection('requests')
         .where('userId', isEqualTo: currentUserId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => _docToHelpRequest(doc)).toList());
+        .map((snapshot) {
+          final requests = snapshot.docs.map((doc) => _docToHelpRequest(doc)).toList();
+          requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return requests;
+        });
   }
 
   // Get requests I'm helping
@@ -90,9 +113,12 @@ class FirestoreService {
     return _db
         .collection('requests')
         .where('helperId', isEqualTo: currentUserId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => _docToHelpRequest(doc)).toList());
+        .map((snapshot) {
+          final requests = snapshot.docs.map((doc) => _docToHelpRequest(doc)).toList();
+          requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return requests;
+        });
   }
 
   // Update request status
@@ -215,13 +241,21 @@ class FirestoreService {
     return _db
         .collection('offers')
         .where('requestId', isEqualTo: requestId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) {
-          final data = doc.data();
-          data['id'] = doc.id;
-          return data;
-        }).toList());
+        .map((snapshot) {
+          final offers = snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          }).toList();
+          // Sort by createdAt descending
+          offers.sort((a, b) {
+            final aTime = (a['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+            final bTime = (b['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+            return bTime.compareTo(aTime);
+          });
+          return offers;
+        });
   }
 
   Future<bool> acceptOffer(String offerId, String requestId, String helperId) async {
