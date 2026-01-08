@@ -474,6 +474,9 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     );
   }
 
+  // Store offers stream for bottom bar to check
+  List<Map<String, dynamic>> _currentOffers = [];
+  
   Widget _buildOffersSection(BuildContext context) {
     final cardColor = AppTheme.getCardColor(context);
     final textPrimary = AppTheme.getTextPrimary(context);
@@ -485,6 +488,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
       stream: _firestoreService.getOffersForRequest(widget.request.id),
       builder: (context, snapshot) {
         final offers = snapshot.data ?? [];
+        _currentOffers = offers; // Store for bottom bar
         
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -601,7 +605,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () => _openChatWithHelper(offer),
                     icon: const Icon(Icons.chat_bubble_outline, size: 18),
                     label: const Text('Chat'),
                     style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
@@ -671,6 +675,22 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
         );
       }
     }
+  }
+
+  void _openChatWithHelper(Map<String, dynamic> offer) {
+    final helperName = offer['helperName'] ?? 'User';
+    final helperId = offer['helperId'] ?? '';
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatScreen(
+          request: widget.request,
+          otherUserId: helperId,
+          otherUserName: helperName,
+          otherUserAvatar: Icons.person,
+        ),
+      ),
+    );
   }
 
   void _cancelOffer(Map<String, dynamic> offer) async {
@@ -819,6 +839,9 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     final currentUserId = _firestoreService.currentUserId;
     final isOwner = widget.request.userId == currentUserId;
     
+    // Check if current user already has an offer
+    final hasMyOffer = _currentOffers.any((offer) => offer['helperId'] == currentUserId);
+    
     // Don't show offer button if user is the owner
     if (isOwner) {
       return Container(
@@ -840,6 +863,34 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
                 Icon(Icons.info_outline, color: AppTheme.primaryColor, size: 20),
                 const SizedBox(width: 8),
                 Text('Ini permintaan kamu', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    
+    // If user already offered, show different message
+    if (hasMyOffer) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cardColor,
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
+        ),
+        child: SafeArea(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: AppTheme.accentColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.check_circle_outline, color: AppTheme.accentColor, size: 20),
+                const SizedBox(width: 8),
+                Text('Kamu sudah menawarkan bantuan', style: TextStyle(color: AppTheme.accentColor, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -1153,7 +1204,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
   }
 
   void _openChat(HelpOffer offer) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(request: widget.request, otherUserName: offer.helperName, otherUserAvatar: offer.helperAvatar)));
+    Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(request: widget.request, otherUserId: offer.helperId, otherUserName: offer.helperName, otherUserAvatar: offer.helperAvatar)));
   }
 
   void _acceptOffer(HelpOffer offer) {

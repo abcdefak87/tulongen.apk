@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/help_request.dart';
 import '../theme/app_theme.dart';
+import '../services/firestore_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final HelpRequest request;
+  final String otherUserId;
   final String otherUserName;
   final IconData otherUserAvatar;
 
   const ChatScreen({
     super.key,
     required this.request,
+    required this.otherUserId,
     required this.otherUserName,
     required this.otherUserAvatar,
   });
@@ -21,8 +25,15 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
-  final List<ChatMessage> _messages = [];
-  final String _currentUserId = 'currentUser';
+  final _firestoreService = FirestoreService();
+  final _db = FirebaseFirestore.instance;
+  
+  String get _chatId {
+    // Create consistent chat ID from both user IDs
+    final ids = [_firestoreService.currentUserId ?? '', widget.otherUserId];
+    ids.sort();
+    return '${widget.request.id}_${ids.join('_')}';
+  }
 
   @override
   void dispose() {
@@ -39,26 +50,8 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           _buildRequestSummary(context),
-          Expanded(
-            child: _messages.isEmpty
-                ? _buildEmptyChat(context)
-                : _buildMessageList(context),
-          ),
+          Expanded(child: _buildMessageList(context)),
           _buildInputArea(context),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyChat(BuildContext context) {
-    final textSecondary = AppTheme.getTextSecondary(context);
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.chat_bubble_outline, size: 64, color: textSecondary.withValues(alpha: 0.5)),
-          const SizedBox(height: 16),
-          Text('Mulai percakapan', style: TextStyle(color: textSecondary)),
         ],
       ),
     );
@@ -95,7 +88,6 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
       actions: [
-        IconButton(icon: Icon(Icons.call_outlined, color: textPrimary), onPressed: () {}),
         IconButton(icon: Icon(Icons.more_vert, color: textPrimary), onPressed: () {}),
       ],
     );
@@ -145,22 +137,67 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMessageList(BuildContext context) {
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: _messages.length,
-      itemBuilder: (context, index) {
-        final message = _messages[index];
-        final isMe = message.senderId == _currentUserId;
-        return _buildMessageBubble(context, message, isMe);
+    final textSecondary = AppTheme.getTextSecondary(context);
+    
+    return StreamBuilder<QuerySnapshot>(
+      stream: _db
+          .collection('chats')
+          .doc(_chatId)
+          .collection('messages')
+          .orderBy('timestamp', descending: false)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        final messages = snapshot.data?.docs ?? [];
+        
+        if (messages.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.chat_bubble_outline, size: 64, color: textSecondary.withValues(alpha: 0.5)),
+                const SizedBox(height: 16),
+                Text('Mulai percakapan', style: TextStyle(color: textSecondary)),
+                const SizedBox(height: 8),
+                Text('Diskusikan detail bantuan', style: TextStyle(color: textSecondary, fontSize: 12)),
+              ],
+            ),
+          );
+        }
+        
+        // Auto scroll to bottom when new message
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+        
+        return ListView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          itemCount: messages.length,
+          itemBuilder: (context, index) {
+            final data = messages[index].data() as Map<String, dynamic>;
+            final isMe = data['senderId'] == _firestoreService.currentUserId;
+            return _buildMessageBubble(context, data, isMe);
+          },
+        );
       },
     );
   }
 
-  Widget _buildMessageBubble(BuildContext context, ChatMessage message, bool isMe) {
+  Widget _buildMessageBubble(BuildContext context, Map<String, dynamic> message, bool isMe) {
     final cardColor = AppTheme.getCardColor(context);
     final textPrimary = AppTheme.getTextPrimary(context);
     final textSecondary = AppTheme.getTextSecondary(context);
+    final timestamp = (message['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
     
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -192,9 +229,9 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(message.message, style: TextStyle(color: isMe ? Colors.white : textPrimary, fontSize: 14, height: 1.4)),
+                  Text(message['message'] ?? '', style: TextStyle(color: isMe ? Colors.white : textPrimary, fontSize: 14, height: 1.4)),
                   const SizedBox(height: 4),
-                  Text(_formatTime(message.timestamp), style: TextStyle(fontSize: 10, color: isMe ? Colors.white70 : textSecondary)),
+                  Text(_formatTime(timestamp), style: TextStyle(fontSize: 10, color: isMe ? Colors.white70 : textSecondary)),
                 ],
               ),
             ),
@@ -236,6 +273,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(vertical: 12),
                   ),
+                  onSubmitted: (_) => _sendMessage(),
                 ),
               ),
             ),
@@ -280,7 +318,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 }),
                 _buildQuickAction(Icons.location_on, 'Share Lokasi', AppTheme.primaryColor, textPrimary, () {
                   Navigator.pop(context);
-                  _sendLocationMessage();
+                  _sendQuickMessage('📍 Lokasi saya sudah saya share');
                 }),
                 _buildQuickAction(Icons.check_circle, 'Deal!', const Color(0xFF00D9A5), textPrimary, () {
                   Navigator.pop(context);
@@ -346,7 +384,7 @@ class _ChatScreenState extends State<ChatScreen> {
             OutlinedButton(
               onPressed: () {
                 Navigator.pop(context);
-                _addMessage('Aku mau bantu seikhlasnya aja ya', MessageType.offer);
+                _sendQuickMessage('💰 Aku mau bantu seikhlasnya aja ya');
               },
               child: const Text('Seikhlasnya'),
             ),
@@ -358,7 +396,7 @@ class _ChatScreenState extends State<ChatScreen> {
             onPressed: () {
               if (priceController.text.isNotEmpty) {
                 Navigator.pop(context);
-                _addMessage('Aku tawar Rp ${priceController.text} ya, gimana?', MessageType.offer);
+                _sendQuickMessage('💰 Aku tawar Rp ${priceController.text} ya, gimana?');
               }
             },
             child: const Text('Kirim'),
@@ -366,10 +404,6 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
     );
-  }
-
-  void _sendLocationMessage() {
-    _addMessage('Lokasi saya: Kemang, Jakarta Selatan', MessageType.location);
   }
 
   void _confirmDeal() {
@@ -401,7 +435,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _addMessage('Deal! Terima kasih sudah membantu!', MessageType.system);
+              _sendQuickMessage('🤝 Deal! Terima kasih!');
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentColor),
             child: const Text('Ya, Deal!'),
@@ -413,24 +447,40 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _sendMessage() {
     if (_messageController.text.trim().isEmpty) return;
-    _addMessage(_messageController.text.trim(), MessageType.text);
+    _sendToFirestore(_messageController.text.trim());
     _messageController.clear();
   }
 
-  void _addMessage(String text, MessageType type) {
-    setState(() {
-      _messages.add(ChatMessage(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        senderId: _currentUserId,
-        senderName: 'Kamu',
-        message: text,
-        timestamp: DateTime.now(),
-        type: type,
-      ));
-    });
-    Future.delayed(const Duration(milliseconds: 100), () {
-      _scrollController.animateTo(_scrollController.position.maxScrollExtent, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
-    });
+  void _sendQuickMessage(String text) {
+    _sendToFirestore(text);
+  }
+
+  Future<void> _sendToFirestore(String text) async {
+    final currentUserId = _firestoreService.currentUserId;
+    if (currentUserId == null) return;
+    
+    try {
+      // Create chat document if not exists
+      await _db.collection('chats').doc(_chatId).set({
+        'requestId': widget.request.id,
+        'participants': [currentUserId, widget.otherUserId],
+        'lastMessage': text,
+        'lastMessageTime': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      
+      // Add message
+      await _db.collection('chats').doc(_chatId).collection('messages').add({
+        'senderId': currentUserId,
+        'message': text,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengirim pesan: $e'), backgroundColor: AppTheme.secondaryColor),
+        );
+      }
+    }
   }
 
   String _formatTime(DateTime time) {
