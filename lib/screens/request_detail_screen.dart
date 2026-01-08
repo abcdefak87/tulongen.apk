@@ -536,15 +536,6 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     final priceDisplay = offeredPrice != null ? 'Rp ${offeredPrice.toString()}' : 'Seikhlasnya';
     final isMyOffer = helperId == currentUserId;
     
-    // Debug: print role info
-    debugPrint('=== OFFER CARD DEBUG ===');
-    debugPrint('currentUserId: $currentUserId');
-    debugPrint('helperId: $helperId');
-    debugPrint('request.userId: ${widget.request.userId}');
-    debugPrint('isOwner: $isOwner');
-    debugPrint('isMyOffer: $isMyOffer');
-    debugPrint('========================');
-    
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -666,6 +657,38 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
   }
 
   void _acceptOfferFromMap(Map<String, dynamic> offer) async {
+    // Show confirmation dialog first
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: AppTheme.accentColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+              child: Icon(Icons.handshake, size: 40, color: AppTheme.accentColor),
+            ),
+            const SizedBox(height: 16),
+            Text('Terima Penawaran?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.getTextPrimary(context))),
+            const SizedBox(height: 8),
+            Text('${offer['helperName']} akan membantu kamu', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.getTextSecondary(context))),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentColor),
+            child: const Text('Ya, Terima'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirm != true) return;
+    
     final success = await _firestoreService.acceptOffer(
       offer['id'],
       widget.request.id,
@@ -674,10 +697,46 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     
     if (mounted) {
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Penawaran diterima!'), backgroundColor: AppTheme.accentColor, behavior: SnackBarBehavior.floating),
+        // Show success dialog with chat option
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: AppTheme.accentColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+                  child: Icon(Icons.check_circle, size: 48, color: AppTheme.accentColor),
+                ),
+                const SizedBox(height: 16),
+                Text('Berhasil!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.getTextPrimary(context))),
+                const SizedBox(height: 8),
+                Text('${offer['helperName']} akan membantu kamu.\nKoordinasikan lewat chat!', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.getTextSecondary(context))),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close dialog
+                  Navigator.pop(this.context); // Go back to home
+                },
+                child: const Text('Kembali'),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context); // Close dialog
+                  _openChatWithHelper(offer); // Open chat
+                },
+                icon: const Icon(Icons.chat, size: 18),
+                label: const Text('Chat Sekarang'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+              ),
+            ],
+          ),
         );
-        Navigator.pop(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: const Text('Gagal menerima penawaran'), backgroundColor: AppTheme.secondaryColor, behavior: SnackBarBehavior.floating),
