@@ -536,6 +536,15 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     final priceDisplay = offeredPrice != null ? 'Rp ${offeredPrice.toString()}' : 'Seikhlasnya';
     final isMyOffer = helperId == currentUserId;
     
+    // Debug: print role info
+    debugPrint('=== OFFER CARD DEBUG ===');
+    debugPrint('currentUserId: $currentUserId');
+    debugPrint('helperId: $helperId');
+    debugPrint('request.userId: ${widget.request.userId}');
+    debugPrint('isOwner: $isOwner');
+    debugPrint('isMyOffer: $isMyOffer');
+    debugPrint('========================');
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
