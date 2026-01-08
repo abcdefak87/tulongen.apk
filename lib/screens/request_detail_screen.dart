@@ -951,7 +951,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      _showSnackbar('Penawaran terkirim! 🎉');
+                      _showSnackbar('Penawaran terkirim!');
                     },
                     style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentColor, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
                     child: const Text('Kirim Penawaran', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
@@ -1021,7 +1021,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
               children: [
                 Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text('Batal'))),
                 const SizedBox(width: 12),
-                Expanded(child: ElevatedButton(onPressed: () { Navigator.pop(context); _showSnackbar('${offer.helperName} akan membantu! 🎉'); }, style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentColor), child: const Text('Terima'))),
+                Expanded(child: ElevatedButton(onPressed: () { Navigator.pop(context); _showSnackbar('${offer.helperName} akan membantu!'); }, style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentColor), child: const Text('Terima'))),
               ],
             ),
           ],

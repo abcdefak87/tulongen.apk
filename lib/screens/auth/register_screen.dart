@@ -91,7 +91,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Buat Akun Baru 🎉', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: textPrimary)),
+        Text('Buat Akun Baru', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: textPrimary)),
         const SizedBox(height: 8),
         Text('Bergabung dengan komunitas penolong', style: TextStyle(fontSize: 16, color: textSecondary)),
       ],
@@ -587,7 +587,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Icon(Icons.celebration, size: 56, color: AppTheme.accentColor),
             ),
             const SizedBox(height: 24),
-            Text('Selamat! 🎉', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textPrimary)),
+            Text('Selamat!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textPrimary)),
             const SizedBox(height: 12),
             Text(
               'Akun kamu berhasil dibuat.\nSelamat bergabung di komunitas TULONGEN!',

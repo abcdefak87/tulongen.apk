@@ -161,7 +161,7 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
               children: [
                 Text('Jangan ragu minta bantuan', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: textPrimary)),
                 const SizedBox(height: 4),
-                Text('Ongkos bisa nego atau seikhlasnya kok! 😊', style: TextStyle(fontSize: 12, color: textSecondary)),
+                Text('Ongkos bisa nego atau seikhlasnya kok!', style: TextStyle(fontSize: 12, color: textSecondary)),
               ],
             ),
           ),

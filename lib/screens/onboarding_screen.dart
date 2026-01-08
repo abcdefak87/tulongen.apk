@@ -109,24 +109,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             builder: (context, value, child) => Transform.scale(
               scale: value,
               child: Container(
-                padding: const EdgeInsets.all(40),
+                padding: const EdgeInsets.all(44),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [data.color.withValues(alpha: 0.2), data.color.withValues(alpha: 0.05)],
+                    colors: [data.color.withValues(alpha: 0.25), data.color.withValues(alpha: 0.08)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: data.color.withValues(alpha: 0.2), blurRadius: 30, spreadRadius: 5)],
+                  boxShadow: [
+                    BoxShadow(color: data.color.withValues(alpha: 0.25), blurRadius: 40, spreadRadius: 8),
+                  ],
+                  border: Border.all(color: data.color.withValues(alpha: 0.15), width: 2),
                 ),
-                child: Icon(data.icon, size: 70, color: data.color),
+                child: Icon(data.icon, size: 72, color: data.color),
               ),
             ),
           ),
-          const SizedBox(height: 48),
+          const SizedBox(height: 52),
           Text(
             data.title,
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: textPrimary, height: 1.3),
+            style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: textPrimary, height: 1.25),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
@@ -147,12 +150,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         final isActive = index == _currentPage;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
           margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: isActive ? 32 : 8,
-          height: 8,
+          width: isActive ? 36 : 10,
+          height: 10,
           decoration: BoxDecoration(
             color: isActive ? _pages[_currentPage].color : (isDark ? Colors.white24 : Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(5),
+            boxShadow: isActive ? [
+              BoxShadow(color: _pages[_currentPage].color.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 2)),
+            ] : null,
           ),
         );
       }),
@@ -168,9 +175,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: OutlinedButton(
               onPressed: () => _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                side: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                side: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300, width: 1.5),
               ),
               child: const Text('Kembali'),
             ),
@@ -181,10 +188,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           child: ElevatedButton(
             onPressed: isLastPage ? _goToLogin : _nextPage,
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 18),
               backgroundColor: _pages[_currentPage].color,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               elevation: 0,
+              shadowColor: _pages[_currentPage].color.withValues(alpha: 0.4),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -192,7 +200,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Text(isLastPage ? 'Mulai Sekarang' : 'Lanjut', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
                 if (!isLastPage) ...[
                   const SizedBox(width: 8),
-                  const Icon(Icons.arrow_forward, size: 18, color: Colors.white),
+                  const Icon(Icons.arrow_forward_rounded, size: 20, color: Colors.white),
+                ],
+                if (isLastPage) ...[
+                  const SizedBox(width: 8),
+                  const Icon(Icons.rocket_launch_rounded, size: 18, color: Colors.white),
                 ],
               ],
             ),

@@ -117,28 +117,40 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHeader(Color textPrimary, Color textSecondary, Color cardColor) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final greeting = _getGreeting();
+    
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Halo, Sahabat!', style: TextStyle(fontSize: 14, color: textSecondary)),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Text('Ayo ', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textPrimary)),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [AppTheme.primaryColor, Color(0xFF8B85FF)]),
-                    borderRadius: BorderRadius.circular(6),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text('$greeting, ', style: TextStyle(fontSize: 14, color: textSecondary)),
+                  Text('Mas! ', style: TextStyle(fontSize: 14, color: textPrimary, fontWeight: FontWeight.w600)),
+                  Icon(_getGreetingIcon(), size: 16, color: AppTheme.accentColor),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Text('Ayo ', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: textPrimary)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [AppTheme.primaryColor, Color(0xFF8B85FF)]),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))],
+                    ),
+                    child: const Text('TULONGEN', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
                   ),
-                  child: const Text('TULONGEN', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
         GestureDetector(
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen())),
@@ -147,15 +159,24 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(
               color: cardColor,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+              border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade100),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06), blurRadius: 12, offset: const Offset(0, 4))],
             ),
             child: Stack(
               children: [
-                Icon(Icons.notifications_outlined, color: textPrimary),
+                Icon(Icons.notifications_outlined, color: textPrimary, size: 24),
                 Positioned(
                   right: 0,
                   top: 0,
-                  child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppTheme.secondaryColor, shape: BoxShape.circle)),
+                  child: Container(
+                    width: 10, 
+                    height: 10, 
+                    decoration: BoxDecoration(
+                      color: AppTheme.secondaryColor, 
+                      shape: BoxShape.circle,
+                      border: Border.all(color: cardColor, width: 1.5),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -165,14 +186,45 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 11) return 'Pagi';
+    if (hour < 15) return 'Siang';
+    if (hour < 18) return 'Sore';
+    return 'Malam';
+  }
+
+  IconData _getGreetingIcon() {
+    final hour = DateTime.now().hour;
+    if (hour < 11) return Icons.wb_sunny_outlined;
+    if (hour < 15) return Icons.wb_sunny;
+    if (hour < 18) return Icons.wb_twilight;
+    return Icons.nightlight_outlined;
+  }
+
   Widget _buildSearchBar(Color cardColor, Color textSecondary) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hasQuery = _searchQuery.isNotEmpty;
+    
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _searchQuery.isNotEmpty ? AppTheme.primaryColor.withValues(alpha: 0.3) : (isDark ? Colors.white10 : Colors.grey.shade200)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: hasQuery 
+              ? AppTheme.primaryColor.withValues(alpha: 0.4) 
+              : (isDark ? Colors.white10 : Colors.grey.shade200),
+          width: hasQuery ? 1.5 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: hasQuery 
+                ? AppTheme.primaryColor.withValues(alpha: 0.1) 
+                : Colors.black.withValues(alpha: isDark ? 0.15 : 0.04), 
+            blurRadius: hasQuery ? 12 : 8, 
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: TextField(
         controller: _searchController,
@@ -180,10 +232,30 @@ class _HomeScreenState extends State<HomeScreen> {
         style: TextStyle(color: AppTheme.getTextPrimary(context), fontSize: 14),
         decoration: InputDecoration(
           hintText: 'Cari bantuan, lokasi, atau nama...',
-          hintStyle: TextStyle(color: textSecondary, fontSize: 14),
-          prefixIcon: Icon(Icons.search_rounded, color: _searchQuery.isNotEmpty ? AppTheme.primaryColor : textSecondary, size: 22),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(icon: Icon(Icons.close_rounded, size: 18, color: textSecondary), onPressed: () { _searchController.clear(); setState(() => _searchQuery = ''); })
+          hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
+          prefixIcon: Container(
+            padding: const EdgeInsets.all(12),
+            child: Icon(
+              Icons.search_rounded, 
+              color: hasQuery ? AppTheme.primaryColor : textSecondary, 
+              size: 22,
+            ),
+          ),
+          suffixIcon: hasQuery
+              ? IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: textSecondary.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.close_rounded, size: 16, color: textSecondary),
+                  ),
+                  onPressed: () { 
+                    _searchController.clear(); 
+                    setState(() => _searchQuery = ''); 
+                  },
+                )
               : null,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -199,19 +271,23 @@ class _HomeScreenState extends State<HomeScreen> {
         final stats = snapshot.data ?? {'totalHelped': 0, 'totalHelpers': 0, 'activeRequests': 0};
         
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [AppTheme.primaryColor, Color(0xFF8B85FF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.25), blurRadius: 12, offset: const Offset(0, 6))],
+            gradient: const LinearGradient(
+              colors: [AppTheme.primaryColor, Color(0xFF8B85FF), Color(0xFF9D97FF)], 
+              begin: Alignment.topLeft, 
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.35), blurRadius: 16, offset: const Offset(0, 8))],
           ),
           child: Row(
             children: [
-              Expanded(child: _buildStatItem('${stats['totalHelped']}', 'Terbantu', Icons.favorite)),
-              Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.25)),
-              Expanded(child: _buildStatItem('${stats['totalHelpers']}', 'Penolong', Icons.people)),
-              Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.25)),
-              Expanded(child: _buildStatItem('${stats['activeRequests']}', 'Aktif', Icons.access_time)),
+              Expanded(child: _buildStatItem('${stats['totalHelped']}', 'Terbantu', Icons.favorite_rounded)),
+              Container(width: 1, height: 36, color: Colors.white.withValues(alpha: 0.2)),
+              Expanded(child: _buildStatItem('${stats['totalHelpers']}', 'Penolong', Icons.people_rounded)),
+              Container(width: 1, height: 36, color: Colors.white.withValues(alpha: 0.2)),
+              Expanded(child: _buildStatItem('${stats['activeRequests']}', 'Aktif', Icons.schedule_rounded)),
             ],
           ),
         );
@@ -227,13 +303,20 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: Colors.white.withValues(alpha: 0.9), size: 16),
-            const SizedBox(width: 4),
-            Text(value, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(icon, color: Colors.white, size: 14),
+            ),
+            const SizedBox(width: 6),
+            Text(value, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
           ],
         ),
-        const SizedBox(height: 2),
-        Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 11)),
+        const SizedBox(height: 4),
+        Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 11, fontWeight: FontWeight.w500)),
       ],
     );
   }

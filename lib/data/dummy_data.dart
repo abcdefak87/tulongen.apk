@@ -208,7 +208,7 @@ class DummyData {
       id: 'chat4',
       senderId: 'helper1',
       senderName: 'Andi Pratama',
-      message: 'Seikhlasnya aja, kebetulan searah kok 😊',
+      message: 'Seikhlasnya aja, kebetulan searah kok',
       timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
     ),
   ];

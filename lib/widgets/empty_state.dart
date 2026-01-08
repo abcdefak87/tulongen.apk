@@ -73,17 +73,20 @@ class EmptyState extends StatelessWidget {
       builder: (context, value, child) => Transform.scale(
         scale: value,
         child: Container(
-          padding: const EdgeInsets.all(28),
+          padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [color.withValues(alpha: 0.15), color.withValues(alpha: 0.05)],
+              colors: [color.withValues(alpha: 0.18), color.withValues(alpha: 0.06)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 20, spreadRadius: 5)],
+            boxShadow: [
+              BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 30, spreadRadius: 8),
+            ],
+            border: Border.all(color: color.withValues(alpha: 0.1), width: 2),
           ),
-          child: Icon(icon, size: 56, color: color),
+          child: Icon(icon, size: 60, color: color),
         ),
       ),
     );

@@ -145,8 +145,8 @@ class AppState extends ChangeNotifier {
   int get totalHelpers => 0;
   int get activeRequests => 0;
 
-  // Unread messages count
-  int _unreadMessages = 2;
+  // Unread messages count - start from 0 (real data)
+  int _unreadMessages = 0;
   int get unreadMessages => _unreadMessages;
 
   void markMessagesAsRead() {

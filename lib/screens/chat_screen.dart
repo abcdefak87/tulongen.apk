@@ -346,7 +346,7 @@ class _ChatScreenState extends State<ChatScreen> {
             OutlinedButton(
               onPressed: () {
                 Navigator.pop(context);
-                _addMessage('Aku mau bantu seikhlasnya aja ya 😊', MessageType.offer);
+                _addMessage('Aku mau bantu seikhlasnya aja ya', MessageType.offer);
               },
               child: const Text('Seikhlasnya'),
             ),

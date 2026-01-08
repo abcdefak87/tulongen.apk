@@ -26,24 +26,24 @@ class CategoryChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        width: 68,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        width: 72,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
         decoration: BoxDecoration(
           color: isSelected ? color : cardColor,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? color : (isDark ? Colors.white10 : Colors.grey.shade200),
-            width: isSelected ? 1.5 : 1,
+            color: isSelected ? color : (isDark ? Colors.white12 : Colors.grey.shade200),
+            width: isSelected ? 2 : 1,
           ),
           boxShadow: [
             BoxShadow(
               color: isSelected 
-                  ? color.withValues(alpha: 0.3) 
-                  : Colors.black.withValues(alpha: isDark ? 0.15 : 0.03),
-              blurRadius: isSelected ? 8 : 4,
-              offset: const Offset(0, 2),
+                  ? color.withValues(alpha: 0.35) 
+                  : Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
+              blurRadius: isSelected ? 12 : 6,
+              offset: Offset(0, isSelected ? 4 : 2),
             ),
           ],
         ),
@@ -52,13 +52,20 @@ class CategoryChip extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
+              duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: isSelected 
                     ? Colors.white.withValues(alpha: 0.25) 
                     : color.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
+                boxShadow: isSelected ? [
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  ),
+                ] : null,
               ),
               child: Icon(
                 icon,
@@ -66,11 +73,11 @@ class CategoryChip extends StatelessWidget {
                 color: isSelected ? Colors.white : color,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               name,
               style: TextStyle(
-                fontSize: 9,
+                fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 color: isSelected ? Colors.white : textPrimary,
                 letterSpacing: -0.2,
