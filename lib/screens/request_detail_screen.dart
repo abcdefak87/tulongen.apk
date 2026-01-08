@@ -478,6 +478,9 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     final cardColor = AppTheme.getCardColor(context);
     final textPrimary = AppTheme.getTextPrimary(context);
     
+    final currentUserId = _firestoreService.currentUserId;
+    final isOwner = widget.request.userId == currentUserId;
+    
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _firestoreService.getOffersForRequest(widget.request.id),
       builder: (context, snapshot) {
@@ -507,7 +510,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
               else if (offers.isEmpty)
                 _buildEmptyOffers(context)
               else
-                ...offers.map((offer) => _buildOfferCardFromMap(context, offer)),
+                ...offers.map((offer) => _buildOfferCardFromMap(context, offer, isOwner, currentUserId)),
             ],
           ),
         );
@@ -515,7 +518,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     );
   }
 
-  Widget _buildOfferCardFromMap(BuildContext context, Map<String, dynamic> offer) {
+  Widget _buildOfferCardFromMap(BuildContext context, Map<String, dynamic> offer, bool isOwner, String? currentUserId) {
     final bgColor = AppTheme.getBackgroundColor(context);
     final cardColor = AppTheme.getCardColor(context);
     final textPrimary = AppTheme.getTextPrimary(context);
@@ -523,17 +526,19 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     final helperName = offer['helperName'] ?? 'User';
+    final helperId = offer['helperId'];
     final message = offer['message'];
     final offeredPrice = offer['offeredPrice'];
     final priceDisplay = offeredPrice != null ? 'Rp ${offeredPrice.toString()}' : 'Seikhlasnya';
+    final isMyOffer = helperId == currentUserId;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: bgColor,
+        color: isMyOffer ? AppTheme.primaryColor.withValues(alpha: 0.05) : bgColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.white12 : Colors.grey.shade200),
+        border: Border.all(color: isMyOffer ? AppTheme.primaryColor.withValues(alpha: 0.3) : (isDark ? Colors.white12 : Colors.grey.shade200)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -549,7 +554,19 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(helperName, style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary)),
+                    Row(
+                      children: [
+                        Text(isMyOffer ? 'Kamu' : helperName, style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary)),
+                        if (isMyOffer) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: AppTheme.primaryColor, borderRadius: BorderRadius.circular(4)),
+                            child: const Text('Penawaranmu', style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w600)),
+                          ),
+                        ],
+                      ],
+                    ),
                     Text('Baru saja', style: TextStyle(fontSize: 12, color: textSecondary)),
                   ],
                 ),
@@ -561,7 +578,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
               ),
             ],
           ),
-          if (message != null) ...[
+          if (message != null && message.toString().isNotEmpty) ...[
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
@@ -577,27 +594,59 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
             ),
           ],
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                  label: const Text('Chat'),
-                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+          // Show different buttons based on role
+          if (isOwner) ...[
+            // Owner can accept or chat
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                    label: const Text('Chat'),
+                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _acceptOfferFromMap(offer),
+                    icon: const Icon(Icons.check, size: 18),
+                    label: const Text('Terima'),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentColor, padding: const EdgeInsets.symmetric(vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                  ),
+                ),
+              ],
+            ),
+          ] else if (isMyOffer) ...[
+            // Helper can cancel their own offer
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _cancelOffer(offer),
+                icon: Icon(Icons.close, size: 18, color: AppTheme.secondaryColor),
+                label: Text('Batalkan Penawaran', style: TextStyle(color: AppTheme.secondaryColor)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  side: BorderSide(color: AppTheme.secondaryColor.withValues(alpha: 0.5)),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _acceptOfferFromMap(offer),
-                  icon: const Icon(Icons.check, size: 18),
-                  label: const Text('Terima'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentColor, padding: const EdgeInsets.symmetric(vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                ),
+            ),
+          ] else ...[
+            // Other users just see info
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.hourglass_empty, size: 14, color: textSecondary),
+                  const SizedBox(width: 6),
+                  Text('Menunggu respon', style: TextStyle(fontSize: 12, color: textSecondary)),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ],
       ),
     );
@@ -620,6 +669,40 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: const Text('Gagal menerima penawaran'), backgroundColor: AppTheme.secondaryColor, behavior: SnackBarBehavior.floating),
         );
+      }
+    }
+  }
+
+  void _cancelOffer(Map<String, dynamic> offer) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Batalkan Penawaran?'),
+        content: const Text('Penawaran kamu akan dihapus dari permintaan ini.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Tidak')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.secondaryColor),
+            child: const Text('Ya, Batalkan'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirm == true) {
+      final success = await _firestoreService.deleteOffer(offer['id']);
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: const Text('Penawaran dibatalkan'), backgroundColor: AppTheme.accentColor, behavior: SnackBarBehavior.floating),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: const Text('Gagal membatalkan penawaran'), backgroundColor: AppTheme.secondaryColor, behavior: SnackBarBehavior.floating),
+          );
+        }
       }
     }
   }
@@ -733,6 +816,36 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
 
   Widget _buildBottomBar(BuildContext context) {
     final cardColor = AppTheme.getCardColor(context);
+    final currentUserId = _firestoreService.currentUserId;
+    final isOwner = widget.request.userId == currentUserId;
+    
+    // Don't show offer button if user is the owner
+    if (isOwner) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cardColor,
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
+        ),
+        child: SafeArea(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.info_outline, color: AppTheme.primaryColor, size: 20),
+                const SizedBox(width: 8),
+                Text('Ini permintaan kamu', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     
     return Container(
       padding: const EdgeInsets.all(16),

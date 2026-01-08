@@ -258,6 +258,16 @@ class FirestoreService {
         });
   }
 
+  Future<bool> deleteOffer(String offerId) async {
+    try {
+      await _db.collection('offers').doc(offerId).delete();
+      return true;
+    } catch (e) {
+      debugPrint('deleteOffer error: $e');
+      return false;
+    }
+  }
+
   Future<bool> acceptOffer(String offerId, String requestId, String helperId) async {
     try {
       await _db.collection('offers').doc(offerId).update({'status': 'accepted'});
