@@ -1,10 +1,9 @@
 #!/bin/bash
 # Tulongen Deploy Script
-# Server: root@unnetserver
-# Domain: https://tulongen.raf.my.id/
+# Usage: cd ~/tulongen.apk && bash deploy/deploy.sh
 
-cd ~/tulongen.apk
+git reset --hard
 git pull
-cp tolong_menolong/deploy/tulongen-latest.apk /var/www/tulongen/apk/
-cp tolong_menolong/deploy/index.html /var/www/tulongen/
-echo "Done! APK & landing page updated."
+cp deploy/tulongen-latest.apk /var/www/tulongen/apk/
+cp deploy/index.html /var/www/tulongen/
+echo "Done!"
