@@ -104,7 +104,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 16),
           Text(userName, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          Text('Bergabung sejak Januari 2026', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
+          Text('Pengguna Tulongen', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
           const SizedBox(height: 16),
           Column(
             children: [

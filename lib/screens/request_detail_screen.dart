@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/help_request.dart';
 import '../theme/app_theme.dart';
-import '../data/dummy_data.dart';
 import '../services/location_service.dart';
 import '../services/pricing_service.dart';
+import '../services/firestore_service.dart';
 import 'chat_screen.dart';
 
 class RequestDetailScreen extends StatefulWidget {
@@ -18,6 +18,7 @@ class RequestDetailScreen extends StatefulWidget {
 class _RequestDetailScreenState extends State<RequestDetailScreen> {
   final _locationService = LocationService();
   final _pricingService = PricingService();
+  final _firestoreService = FirestoreService();
   String? _distanceText;
   double? _distanceKm;
   bool _isLoadingDistance = false;
@@ -463,37 +464,153 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
   }
 
   Widget _buildOffersSection(BuildContext context) {
-    final offers = DummyData.dummyOffers.where((o) => o.orderId == widget.request.id).toList();
     final cardColor = AppTheme.getCardColor(context);
     final textPrimary = AppTheme.getTextPrimary(context);
+    
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _firestoreService.getOffersForRequest(widget.request.id),
+      builder: (context, snapshot) {
+        final offers = snapshot.data ?? [];
+        
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.people_alt_outlined, color: AppTheme.primaryColor, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Penawaran (${offers.length})', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textPrimary)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (snapshot.connectionState == ConnectionState.waiting)
+                const Center(child: CircularProgressIndicator())
+              else if (offers.isEmpty)
+                _buildEmptyOffers(context)
+              else
+                ...offers.map((offer) => _buildOfferCardFromMap(context, offer)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildOfferCardFromMap(BuildContext context, Map<String, dynamic> offer) {
     final bgColor = AppTheme.getBackgroundColor(context);
+    final cardColor = AppTheme.getCardColor(context);
+    final textPrimary = AppTheme.getTextPrimary(context);
+    final textSecondary = AppTheme.getTextSecondary(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    final helperName = offer['helperName'] ?? 'User';
+    final message = offer['message'];
+    final offeredPrice = offer['offeredPrice'];
+    final priceDisplay = offeredPrice != null ? 'Rp ${offeredPrice.toString()}' : 'Seikhlasnya';
     
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? Colors.white12 : Colors.grey.shade200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.people_alt_outlined, color: AppTheme.primaryColor, size: 20),
-              const SizedBox(width: 8),
-              Text('Penawaran (${offers.length})', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textPrimary)),
+              CircleAvatar(
+                backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+                child: Icon(Icons.person, color: AppTheme.primaryColor, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(helperName, style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary)),
+                    Text('Baru saja', style: TextStyle(fontSize: 12, color: textSecondary)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: AppTheme.accentColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                child: Text(priceDisplay, style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.accentColor, fontSize: 13)),
+              ),
             ],
           ),
-          const SizedBox(height: 16),
-          if (offers.isEmpty)
-            _buildEmptyOffers(context)
-          else
-            ...offers.map((offer) => _buildOfferCard(context, offer)),
+          if (message != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(10)),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.format_quote, size: 16, color: textSecondary),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(message, style: TextStyle(color: textSecondary, height: 1.4, fontStyle: FontStyle.italic))),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                  label: const Text('Chat'),
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _acceptOfferFromMap(offer),
+                  icon: const Icon(Icons.check, size: 18),
+                  label: const Text('Terima'),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentColor, padding: const EdgeInsets.symmetric(vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
+  }
+
+  void _acceptOfferFromMap(Map<String, dynamic> offer) async {
+    final success = await _firestoreService.acceptOffer(
+      offer['id'],
+      widget.request.id,
+      offer['helperId'],
+    );
+    
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('Penawaran diterima!'), backgroundColor: AppTheme.accentColor, behavior: SnackBarBehavior.floating),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('Gagal menerima penawaran'), backgroundColor: AppTheme.secondaryColor, behavior: SnackBarBehavior.floating),
+        );
+      }
+    }
   }
 
   Widget _buildEmptyOffers(BuildContext context) {

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/help_request.dart';
-import '../data/dummy_data.dart';
 
 /// Global app state management using ChangeNotifier
 /// Handles theme, user data, and app-wide state with persistence
@@ -31,8 +30,8 @@ class AppState extends ChangeNotifier {
     _userName = prefs.getString(_keyUserName) ?? 'Pengguna Baik Hati';
     _userEmail = prefs.getString(_keyUserEmail) ?? '';
     _userPhone = prefs.getString(_keyUserPhone) ?? '';
-    _helpGiven = prefs.getInt(_keyHelpGiven) ?? 12;
-    _helpReceived = prefs.getInt(_keyHelpReceived) ?? 5;
+    _helpGiven = prefs.getInt(_keyHelpGiven) ?? 0;
+    _helpReceived = prefs.getInt(_keyHelpReceived) ?? 0;
     
     final themeModeIndex = prefs.getInt(_keyThemeMode) ?? 0;
     _themeMode = ThemeMode.values[themeModeIndex];
@@ -141,18 +140,10 @@ class AppState extends ChangeNotifier {
     return items;
   }
 
-  // Stats - calculated from actual data
-  int get totalHelped {
-    return DummyData.helpRequests.where((r) => r.status == HelpStatus.completed).length;
-  }
-
-  int get totalHelpers {
-    return DummyData.dummyOffers.length;
-  }
-
-  int get activeRequests {
-    return DummyData.helpRequests.where((r) => r.status == HelpStatus.open).length;
-  }
+  // Stats - no longer used, stats come from Firestore
+  int get totalHelped => 0;
+  int get totalHelpers => 0;
+  int get activeRequests => 0;
 
   // Unread messages count
   int _unreadMessages = 2;
@@ -168,10 +159,10 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // User stats
-  int _helpGiven = 12;
-  int _helpReceived = 5;
-  double _rating = 4.9;
+  // User stats - start from 0
+  int _helpGiven = 0;
+  int _helpReceived = 0;
+  double _rating = 0.0;
 
   int get helpGiven => _helpGiven;
   int get helpReceived => _helpReceived;

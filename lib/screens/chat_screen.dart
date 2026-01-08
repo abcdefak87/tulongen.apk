@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/help_request.dart';
 import '../theme/app_theme.dart';
-import '../data/dummy_data.dart';
 
 class ChatScreen extends StatefulWidget {
   final HelpRequest request;
@@ -24,19 +23,6 @@ class _ChatScreenState extends State<ChatScreen> {
   final _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
   final String _currentUserId = 'currentUser';
-  bool _otherUserTyping = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _messages.addAll(DummyData.dummyChats);
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _otherUserTyping = true);
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) setState(() => _otherUserTyping = false);
-      });
-    });
-  }
 
   @override
   void dispose() {
@@ -53,59 +39,27 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           _buildRequestSummary(context),
-          Expanded(child: _buildMessageList(context)),
-          if (_otherUserTyping) _buildTypingIndicator(context),
+          Expanded(
+            child: _messages.isEmpty
+                ? _buildEmptyChat(context)
+                : _buildMessageList(context),
+          ),
           _buildInputArea(context),
         ],
       ),
     );
   }
 
-  Widget _buildTypingIndicator(BuildContext context) {
-    final cardColor = AppTheme.getCardColor(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
+  Widget _buildEmptyChat(BuildContext context) {
+    final textSecondary = AppTheme.getTextSecondary(context);
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircleAvatar(
-            radius: 12,
-            backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
-            child: Icon(widget.otherUserAvatar, size: 14, color: AppTheme.primaryColor),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildTypingDot(0),
-                _buildTypingDot(1),
-                _buildTypingDot(2),
-              ],
-            ),
-          ),
+          Icon(Icons.chat_bubble_outline, size: 64, color: textSecondary.withValues(alpha: 0.5)),
+          const SizedBox(height: 16),
+          Text('Mulai percakapan', style: TextStyle(color: textSecondary)),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTypingDot(int index) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 600 + (index * 200)),
-      curve: Curves.easeInOut,
-      builder: (context, value, child) => Container(
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        width: 6,
-        height: 6,
-        decoration: BoxDecoration(
-          color: AppTheme.getTextSecondary(context).withValues(alpha: 0.3 + (value * 0.4)),
-          shape: BoxShape.circle,
-        ),
       ),
     );
   }
