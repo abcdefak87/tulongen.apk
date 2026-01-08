@@ -7,7 +7,7 @@ set -e
 
 # ============ KONFIGURASI ============
 APP_NAME="tulongen"
-VERSION="1.0.0"
+VERSION="1.2.0"
 SERVER_USER="root"
 SERVER_HOST="172.17.2.3"
 SERVER_PATH="/var/www/tulongen"
@@ -116,82 +116,12 @@ ENDSSH
 
 # ============ BUAT LANDING PAGE ============
 create_landing_page() {
-    log_info "Creating landing page..."
+    log_info "Uploading landing page..."
     
-    ssh ${SERVER_USER}@${SERVER_HOST} << 'ENDSSH'
-cat > /var/www/tulongen/index.html << 'EOF'
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Download TULONGEN</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #6C63FF 0%, #8B85FF 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .card {
-            background: white;
-            border-radius: 24px;
-            padding: 40px;
-            max-width: 400px;
-            width: 100%;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-        }
-        .logo {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #6C63FF, #8B85FF);
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 24px;
-            font-size: 36px;
-            color: white;
-        }
-        h1 { color: #2D3142; margin-bottom: 8px; }
-        p { color: #9094A6; margin-bottom: 32px; line-height: 1.6; }
-        .btn {
-            display: inline-block;
-            background: linear-gradient(135deg, #6C63FF, #8B85FF);
-            color: white;
-            padding: 16px 48px;
-            border-radius: 14px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 16px;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(108,99,255,0.4);
-        }
-        .version { color: #9094A6; font-size: 12px; margin-top: 24px; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <div class="logo">T</div>
-        <h1>TULONGEN</h1>
-        <p>Platform saling bantu untuk Gen Z Indonesia.<br>Tulong = minta bantuan, Nulong = membantu!</p>
-        <a href="/download" class="btn">Download APK</a>
-        <p class="version">Versi 1.0.0 | Android 5.0+</p>
-    </div>
-</body>
-</html>
-EOF
-ENDSSH
+    # Upload landing page dari file lokal
+    scp "deploy/index.html" "${SERVER_USER}@${SERVER_HOST}:${SERVER_PATH}/index.html"
     
-    log_info "Landing page berhasil dibuat!"
+    log_info "Landing page berhasil diupload!"
 }
 
 # ============ MAIN ============
