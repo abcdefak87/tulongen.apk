@@ -11,6 +11,7 @@ class AuthService {
 
   User? get currentUser => _auth.currentUser;
   bool get isLoggedIn => currentUser != null;
+  bool get isEmailVerified => currentUser?.emailVerified ?? false;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   // Register with email and password
@@ -30,6 +31,9 @@ class AuthService {
         // Update display name
         await credential.user!.updateDisplayName(name);
         
+        // Send email verification
+        await credential.user!.sendEmailVerification();
+        
         // Save user data to Firestore
         await _firestore.collection('users').doc(credential.user!.uid).set({
           'name': name,
@@ -40,9 +44,10 @@ class AuthService {
           'helpReceived': 0,
           'rating': 0.0,
           'ratingCount': 0,
+          'isVerified': false,
         });
 
-        return AuthResult(success: true, user: credential.user);
+        return AuthResult(success: true, user: credential.user, needsVerification: true);
       }
       return AuthResult(success: false, error: 'Gagal membuat akun');
     } on FirebaseAuthException catch (e) {
@@ -50,6 +55,35 @@ class AuthService {
     } catch (e) {
       return AuthResult(success: false, error: e.toString());
     }
+  }
+
+  // Resend email verification
+  Future<AuthResult> resendVerificationEmail() async {
+    try {
+      if (currentUser != null && !currentUser!.emailVerified) {
+        await currentUser!.sendEmailVerification();
+        return AuthResult(success: true);
+      }
+      return AuthResult(success: false, error: 'User tidak ditemukan');
+    } catch (e) {
+      return AuthResult(success: false, error: 'Gagal mengirim email verifikasi');
+    }
+  }
+
+  // Check if email is verified
+  Future<bool> checkEmailVerified() async {
+    if (currentUser == null) return false;
+    await currentUser!.reload();
+    final verified = _auth.currentUser?.emailVerified ?? false;
+    
+    if (verified) {
+      // Update Firestore
+      await _firestore.collection('users').doc(currentUser!.uid).update({
+        'isVerified': true,
+      });
+    }
+    
+    return verified;
   }
 
   // Login with email and password
@@ -62,6 +96,16 @@ class AuthService {
         email: email,
         password: password,
       );
+      
+      // Check if email is verified
+      if (credential.user != null && !credential.user!.emailVerified) {
+        return AuthResult(
+          success: true, 
+          user: credential.user, 
+          needsVerification: true,
+        );
+      }
+      
       return AuthResult(success: true, user: credential.user);
     } on FirebaseAuthException catch (e) {
       return AuthResult(success: false, error: _getErrorMessage(e.code));
@@ -73,6 +117,70 @@ class AuthService {
   // Logout
   Future<void> logout() async {
     await _auth.signOut();
+  }
+
+  // Delete account completely
+  Future<AuthResult> deleteAccount() async {
+    if (currentUser == null) {
+      return AuthResult(success: false, error: 'User tidak ditemukan');
+    }
+    
+    try {
+      final userId = currentUser!.uid;
+      
+      // Delete user data from Firestore
+      await _firestore.collection('users').doc(userId).delete();
+      
+      // Delete user's requests
+      final requests = await _firestore
+          .collection('requests')
+          .where('userId', isEqualTo: userId)
+          .get();
+      for (var doc in requests.docs) {
+        await doc.reference.delete();
+      }
+      
+      // Delete user's offers
+      final offers = await _firestore
+          .collection('offers')
+          .where('helperId', isEqualTo: userId)
+          .get();
+      for (var doc in offers.docs) {
+        await doc.reference.delete();
+      }
+      
+      // Delete Firebase Auth account
+      await currentUser!.delete();
+      
+      return AuthResult(success: true);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        return AuthResult(success: false, error: 'Silakan login ulang untuk menghapus akun');
+      }
+      return AuthResult(success: false, error: _getErrorMessage(e.code));
+    } catch (e) {
+      return AuthResult(success: false, error: 'Gagal menghapus akun: $e');
+    }
+  }
+
+  // Re-authenticate user (needed before delete)
+  Future<AuthResult> reauthenticate(String password) async {
+    if (currentUser == null || currentUser!.email == null) {
+      return AuthResult(success: false, error: 'User tidak ditemukan');
+    }
+    
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: currentUser!.email!,
+        password: password,
+      );
+      await currentUser!.reauthenticateWithCredential(credential);
+      return AuthResult(success: true);
+    } on FirebaseAuthException catch (e) {
+      return AuthResult(success: false, error: _getErrorMessage(e.code));
+    } catch (e) {
+      return AuthResult(success: false, error: e.toString());
+    }
   }
 
   // Get user data from Firestore
@@ -130,6 +238,8 @@ class AuthService {
         return 'Email atau password salah';
       case 'too-many-requests':
         return 'Terlalu banyak percobaan, coba lagi nanti';
+      case 'requires-recent-login':
+        return 'Silakan login ulang untuk melanjutkan';
       default:
         return 'Terjadi kesalahan: $code';
     }
@@ -140,6 +250,12 @@ class AuthResult {
   final bool success;
   final User? user;
   final String? error;
+  final bool needsVerification;
 
-  AuthResult({required this.success, this.user, this.error});
+  AuthResult({
+    required this.success, 
+    this.user, 
+    this.error,
+    this.needsVerification = false,
+  });
 }

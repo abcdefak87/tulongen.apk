@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../data/dummy_data.dart';
@@ -21,6 +22,28 @@ class _OfferHelpScreenState extends State<OfferHelpScreen> {
   final _locationService = LocationService();
   final _firestoreService = FirestoreService();
   bool _isLoadingLocation = false;
+  
+  // Random motivational quotes
+  static const List<String> _motivationalQuotes = [
+    '"Sebaik-baik manusia adalah yang paling bermanfaat"',
+    '"Tangan di atas lebih baik dari tangan di bawah"',
+    '"Berbagi tidak akan membuatmu miskin"',
+    '"Kebaikan kecil bisa mengubah dunia seseorang"',
+    '"Senyum adalah sedekah paling mudah"',
+    '"Membantu orang lain adalah investasi kebahagiaan"',
+    '"Jadilah alasan seseorang tersenyum hari ini"',
+    '"Kebaikan yang kamu tabur akan kembali padamu"',
+    '"Satu kebaikan mengundang kebaikan lainnya"',
+    '"Hidup lebih bermakna saat kita berbagi"',
+  ];
+  
+  late String _currentQuote;
+  
+  @override
+  void initState() {
+    super.initState();
+    _currentQuote = _motivationalQuotes[Random().nextInt(_motivationalQuotes.length)];
+  }
 
   List<HelpRequest> _filterRequests(List<HelpRequest> requests) {
     var filtered = requests.where((r) => r.status == HelpStatus.open).toList();
@@ -161,9 +184,9 @@ class _OfferHelpScreenState extends State<OfferHelpScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '"Sebaik-baik manusia adalah yang paling bermanfaat"',
-                  style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500, fontStyle: FontStyle.italic),
+                Text(
+                  _currentQuote,
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500, fontStyle: FontStyle.italic),
                 ),
                 const SizedBox(height: 12),
                 Container(

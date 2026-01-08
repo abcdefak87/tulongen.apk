@@ -162,24 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
               border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade100),
               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06), blurRadius: 12, offset: const Offset(0, 4))],
             ),
-            child: Stack(
-              children: [
-                Icon(Icons.notifications_outlined, color: textPrimary, size: 24),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    width: 10, 
-                    height: 10, 
-                    decoration: BoxDecoration(
-                      color: AppTheme.secondaryColor, 
-                      shape: BoxShape.circle,
-                      border: Border.all(color: cardColor, width: 1.5),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            child: Icon(Icons.notifications_outlined, color: textPrimary, size: 24),
           ),
         ),
       ],

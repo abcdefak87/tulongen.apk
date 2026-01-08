@@ -561,10 +561,125 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       
       if (!mounted) return;
-      _showSuccessDialog();
+      
+      // Show verification dialog
+      if (result.needsVerification) {
+        _showVerificationDialog();
+      } else {
+        _showSuccessDialog();
+      }
     } else {
       _showErrorSnackbar(result.error ?? 'Gagal membuat akun');
     }
+  }
+
+  void _showVerificationDialog() {
+    final cardColor = AppTheme.getCardColor(context);
+    final textSecondary = AppTheme.getTextSecondary(context);
+    final textPrimary = AppTheme.getTextPrimary(context);
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+              child: Icon(Icons.mark_email_read_rounded, size: 56, color: AppTheme.primaryColor),
+            ),
+            const SizedBox(height: 24),
+            Text('Verifikasi Email', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textPrimary)),
+            const SizedBox(height: 12),
+            Text(
+              'Link verifikasi telah dikirim ke:\n${_emailController.text}',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: textSecondary, height: 1.5),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.accentColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 18, color: AppTheme.accentColor),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Cek folder spam jika tidak ada di inbox',
+                      style: TextStyle(fontSize: 12, color: AppTheme.accentColor),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () async {
+                  // Check if verified
+                  final verified = await _authService.checkEmailVerified();
+                  if (!mounted) return;
+                  
+                  if (verified) {
+                    Navigator.pop(dialogContext);
+                    _showSuccessDialog();
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Email belum diverifikasi. Cek inbox kamu.'),
+                        backgroundColor: AppTheme.secondaryColor,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: const Text('Sudah Verifikasi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () async {
+                final result = await _authService.resendVerificationEmail();
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(result.success ? 'Email verifikasi dikirim ulang' : 'Gagal mengirim email'),
+                    backgroundColor: result.success ? AppTheme.accentColor : AppTheme.secondaryColor,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: Text('Kirim Ulang Email', style: TextStyle(color: AppTheme.primaryColor)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MainNavigation()),
+                  (route) => false,
+                );
+              },
+              child: Text('Lanjut Tanpa Verifikasi', style: TextStyle(color: textSecondary, fontSize: 13)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showSuccessDialog() {
