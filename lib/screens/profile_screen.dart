@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../theme/app_theme.dart';
 import '../services/app_state.dart';
 import '../services/firestore_service.dart';
@@ -18,7 +21,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _appState = AppState();
   final _firestoreService = FirestoreService();
   final _authService = AuthService();
+  final _imagePicker = ImagePicker();
   Map<String, dynamic>? _userData;
+  String? _profileImageUrl;
+  bool _isUploadingImage = false;
 
   @override
   void initState() {
@@ -32,9 +38,124 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (userId != null) {
       final data = await _firestoreService.getUserData(userId);
       if (mounted) {
-        setState(() => _userData = data);
+        setState(() {
+          _userData = data;
+          _profileImageUrl = data?['photoUrl'];
+        });
       }
     }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+      );
+      
+      if (image != null) {
+        await _uploadImage(File(image.path));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memilih foto: $e'), backgroundColor: AppTheme.secondaryColor),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadImage(File imageFile) async {
+    final userId = _firestoreService.currentUserId;
+    if (userId == null) return;
+    
+    setState(() => _isUploadingImage = true);
+    
+    try {
+      final ref = FirebaseStorage.instance.ref().child('profile_photos/$userId.jpg');
+      await ref.putFile(imageFile);
+      final url = await ref.getDownloadURL();
+      
+      // Update Firestore
+      await _firestoreService.updateUserPhoto(url);
+      
+      setState(() {
+        _profileImageUrl = url;
+        _isUploadingImage = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('Foto profil berhasil diperbarui'), backgroundColor: AppTheme.accentColor, behavior: SnackBarBehavior.floating),
+        );
+      }
+    } catch (e) {
+      setState(() => _isUploadingImage = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal upload foto: $e'), backgroundColor: AppTheme.secondaryColor),
+        );
+      }
+    }
+  }
+
+  void _showImagePickerOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppTheme.getCardColor(context),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 20),
+            Text('Pilih Foto Profil', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.getTextPrimary(context))),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildImageOption(Icons.camera_alt, 'Kamera', () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera);
+                }),
+                _buildImageOption(Icons.photo_library, 'Galeri', () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.gallery);
+                }),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageOption(IconData icon, String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: AppTheme.primaryColor, size: 32),
+          ),
+          const SizedBox(height: 8),
+          Text(label, style: TextStyle(color: AppTheme.getTextPrimary(context), fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
   }
 
   @override
@@ -90,12 +211,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3)),
-                child: const CircleAvatar(radius: 45, backgroundColor: Colors.white, child: Icon(Icons.person_rounded, size: 50, color: AppTheme.primaryColor)),
+                child: _isUploadingImage
+                    ? const CircleAvatar(
+                        radius: 45,
+                        backgroundColor: Colors.white,
+                        child: CircularProgressIndicator(),
+                      )
+                    : _profileImageUrl != null
+                        ? CircleAvatar(
+                            radius: 45,
+                            backgroundImage: NetworkImage(_profileImageUrl!),
+                            backgroundColor: Colors.white,
+                          )
+                        : const CircleAvatar(
+                            radius: 45,
+                            backgroundColor: Colors.white,
+                            child: Icon(Icons.person_rounded, size: 50, color: AppTheme.primaryColor),
+                          ),
               ),
               Positioned(
                 right: 0, bottom: 0,
                 child: GestureDetector(
-                  onTap: () => _showEditProfileSheet(context),
+                  onTap: _showImagePickerOptions,
                   child: Container(padding: const EdgeInsets.all(8), decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle), child: Icon(Icons.camera_alt, size: 16, color: AppTheme.primaryColor)),
                 ),
               ),

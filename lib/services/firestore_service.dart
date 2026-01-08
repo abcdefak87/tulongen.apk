@@ -176,6 +176,16 @@ class FirestoreService {
     }
   }
 
+  Future<bool> updateUserPhoto(String photoUrl) async {
+    if (currentUserId == null) return false;
+    try {
+      await _db.collection('users').doc(currentUserId).update({'photoUrl': photoUrl});
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // ============ OFFERS ============
 
   Future<String?> createOffer({

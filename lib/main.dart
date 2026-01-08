@@ -19,10 +19,12 @@ void main() async {
   // Initialize app state from SharedPreferences
   await AppState().init();
   
+  // Set status bar style - dark icons for light background
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
     ),
   );
   runApp(const TulongenApp());

@@ -349,13 +349,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildRequestList(List<HelpRequest> requests) {
     if (requests.isEmpty) {
+      // Different message based on filter state
+      String title;
+      String subtitle;
+      bool showResetButton;
+      
+      if (_searchQuery.isNotEmpty) {
+        title = 'Tidak ada hasil';
+        subtitle = 'Coba kata kunci lain atau reset filter';
+        showResetButton = true;
+      } else if (selectedCategoryIndex != -1) {
+        title = 'Tidak ada hasil';
+        subtitle = 'Belum ada permintaan di kategori ini';
+        showResetButton = true;
+      } else {
+        title = 'Belum ada permintaan';
+        subtitle = 'Jadilah yang pertama meminta bantuan!';
+        showResetButton = false;
+      }
+      
       return SliverFillRemaining(
         child: EmptyState(
-          icon: Icons.search_off,
-          title: 'Tidak ada hasil',
-          subtitle: _searchQuery.isNotEmpty ? 'Coba kata kunci lain atau reset filter' : 'Belum ada permintaan di kategori ini',
-          buttonText: 'Reset Filter',
-          onButtonPressed: () => setState(() { _searchQuery = ''; _searchController.clear(); selectedCategoryIndex = -1; }),
+          icon: showResetButton ? Icons.search_off : Icons.inbox_outlined,
+          title: title,
+          subtitle: subtitle,
+          buttonText: showResetButton ? 'Reset Filter' : null,
+          onButtonPressed: showResetButton ? () => setState(() { _searchQuery = ''; _searchController.clear(); selectedCategoryIndex = -1; }) : null,
         ),
       );
     }
