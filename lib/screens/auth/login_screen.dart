@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../services/app_state.dart';
+import '../../services/auth_service.dart';
 import 'register_screen.dart';
 import '../../main.dart';
 
@@ -17,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _appState = AppState();
+  final _authService = AuthService();
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -56,10 +58,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     _buildLoginForm(cardColor, textPrimary, textSecondary, isDark),
                     const SizedBox(height: 24),
                     _buildLoginButton(),
-                    const SizedBox(height: 24),
-                    _buildDivider(textSecondary, isDark),
-                    const SizedBox(height: 24),
-                    _buildSocialLogin(cardColor, textPrimary, isDark),
                     const SizedBox(height: 32),
                     _buildRegisterLink(textSecondary),
                   ],
@@ -89,12 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Icon(Icons.handshake_rounded, size: 48, color: AppTheme.primaryColor),
         ),
         const SizedBox(height: 24),
-        Row(
-          children: [
-            Text('Selamat Datang! ', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: textPrimary)),
-            const Text('👋', style: TextStyle(fontSize: 28)),
-          ],
-        ),
+        Text('Selamat Datang!', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: textPrimary)),
         const SizedBox(height: 8),
         Text('Masuk untuk mulai saling menolong', style: TextStyle(fontSize: 16, color: textSecondary)),
       ],
@@ -106,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
       children: [
         _buildTextField(
           controller: _emailController,
-          label: 'Email atau No. HP',
+          label: 'Email',
           hint: 'contoh@email.com',
           icon: Icons.email_outlined,
           keyboardType: TextInputType.emailAddress,
@@ -115,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
           textSecondary: textSecondary,
           validator: (v) {
             if (v?.isEmpty ?? true) return 'Email wajib diisi';
-            if (!v!.contains('@') && v.length < 10) return 'Format tidak valid';
+            if (!v!.contains('@')) return 'Format email tidak valid';
             return null;
           },
         ),
@@ -123,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _buildTextField(
           controller: _passwordController,
           label: 'Password',
-          hint: '••••••••',
+          hint: 'Masukkan password',
           icon: Icons.lock_outline,
           obscureText: _obscurePassword,
           cardColor: cardColor,
@@ -214,43 +207,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildDivider(Color textSecondary, bool isDark) {
-    return Row(
-      children: [
-        Expanded(child: Divider(color: isDark ? Colors.white24 : Colors.grey.shade300)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text('atau masuk dengan', style: TextStyle(color: textSecondary, fontSize: 13)),
-        ),
-        Expanded(child: Divider(color: isDark ? Colors.white24 : Colors.grey.shade300)),
-      ],
-    );
-  }
-
-  Widget _buildSocialLogin(Color cardColor, Color textPrimary, bool isDark) {
-    return Row(
-      children: [
-        Expanded(child: _buildSocialButton(icon: Icons.g_mobiledata, label: 'Google', color: const Color(0xFFDB4437), cardColor: cardColor, textPrimary: textPrimary, isDark: isDark)),
-        const SizedBox(width: 16),
-        Expanded(child: _buildSocialButton(icon: Icons.facebook, label: 'Facebook', color: const Color(0xFF4267B2), cardColor: cardColor, textPrimary: textPrimary, isDark: isDark)),
-      ],
-    );
-  }
-
-  Widget _buildSocialButton({required IconData icon, required String label, required Color color, required Color cardColor, required Color textPrimary, required bool isDark}) {
-    return OutlinedButton.icon(
-      onPressed: () => _showComingSoonSnackbar(),
-      icon: Icon(icon, color: color, size: 24),
-      label: Text(label, style: TextStyle(color: textPrimary, fontWeight: FontWeight.w500)),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        side: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade200),
-        backgroundColor: cardColor,
-      ),
-    );
-  }
-
   Widget _buildRegisterLink(Color textSecondary) {
     return Center(
       child: Row(
@@ -270,20 +226,42 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
     
-    // Update app state with persistence
-    await _appState.login(email: _emailController.text);
+    final result = await _authService.login(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
     
     setState(() => _isLoading = false);
 
     if (!mounted) return;
 
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const MainNavigation()),
-      (route) => false,
-    );
+    if (result.success) {
+      // Get user data from Firestore
+      final userData = await _authService.getUserData();
+      
+      // Update local app state
+      await _appState.login(
+        name: userData?['name'] ?? result.user?.displayName ?? 'User',
+        email: result.user?.email ?? '',
+        phone: userData?['phone'] ?? '',
+      );
+
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const MainNavigation()),
+        (route) => false,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.error ?? 'Login gagal'),
+          backgroundColor: AppTheme.secondaryColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   void _showForgotPasswordSheet() {
@@ -326,10 +304,17 @@ class _LoginScreenState extends State<LoginScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
+                  if (emailController.text.isEmpty) return;
                   Navigator.pop(context);
+                  final result = await _authService.resetPassword(emailController.text.trim());
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: const Text('Link reset password telah dikirim ke email'), backgroundColor: AppTheme.accentColor, behavior: SnackBarBehavior.floating),
+                    SnackBar(
+                      content: Text(result.success ? 'Link reset password telah dikirim ke email' : result.error ?? 'Gagal'),
+                      backgroundColor: result.success ? AppTheme.accentColor : AppTheme.secondaryColor,
+                      behavior: SnackBarBehavior.floating,
+                    ),
                   );
                 },
                 child: const Text('Kirim Link Reset'),
@@ -338,12 +323,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  void _showComingSoonSnackbar() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: const Text('Fitur ini coming soon! 🚀'), backgroundColor: AppTheme.primaryColor, behavior: SnackBarBehavior.floating),
     );
   }
 }

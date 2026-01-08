@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "837798801584",
+    "project_id": "tulongen-17d79",
+    "storage_bucket": "tulongen-17d79.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:837798801584:android:9156285055adefbd0c4b75",
+        "android_client_info": {
+          "package_name": "com.tolongmenolong.tolong_menolong"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAbR6Eqbvun_CI5kPMWxVRrlv5WMDXNPs0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

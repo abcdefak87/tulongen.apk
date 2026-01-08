@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../services/app_state.dart';
+import '../../services/auth_service.dart';
 import '../../main.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -530,6 +531,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   final _appState = AppState();
+  final _authService = AuthService();
 
   void _handleRegister() async {
     if (!_agreeToTerms) {
@@ -538,20 +540,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
     
-    // Save login state with user data
-    await _appState.login(
-      name: _nameController.text,
-      email: _emailController.text,
-      phone: _phoneController.text,
+    final result = await _authService.register(
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+      phone: _phoneController.text.trim(),
     );
     
     setState(() => _isLoading = false);
 
     if (!mounted) return;
 
-    _showSuccessDialog();
+    if (result.success) {
+      // Save login state with user data
+      await _appState.login(
+        name: _nameController.text,
+        email: _emailController.text,
+        phone: _phoneController.text,
+      );
+      
+      if (!mounted) return;
+      _showSuccessDialog();
+    } else {
+      _showErrorSnackbar(result.error ?? 'Gagal membuat akun');
+    }
   }
 
   void _showSuccessDialog() {
