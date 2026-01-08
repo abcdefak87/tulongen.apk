@@ -193,22 +193,29 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildStatsCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [AppTheme.primaryColor, Color(0xFF8B85FF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.25), blurRadius: 12, offset: const Offset(0, 6))],
-      ),
-      child: Row(
-        children: [
-          Expanded(child: _buildStatItem('${_appState.totalHelped + 150}', 'Terbantu', Icons.favorite)),
-          Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.25)),
-          Expanded(child: _buildStatItem('${_appState.totalHelpers + 85}', 'Penolong', Icons.people)),
-          Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.25)),
-          Expanded(child: _buildStatItem('${_appState.activeRequests}', 'Aktif', Icons.access_time)),
-        ],
-      ),
+    return FutureBuilder<Map<String, int>>(
+      future: _firestoreService.getGlobalStats(),
+      builder: (context, snapshot) {
+        final stats = snapshot.data ?? {'totalHelped': 0, 'totalHelpers': 0, 'activeRequests': 0};
+        
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [AppTheme.primaryColor, Color(0xFF8B85FF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.25), blurRadius: 12, offset: const Offset(0, 6))],
+          ),
+          child: Row(
+            children: [
+              Expanded(child: _buildStatItem('${stats['totalHelped']}', 'Terbantu', Icons.favorite)),
+              Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.25)),
+              Expanded(child: _buildStatItem('${stats['totalHelpers']}', 'Penolong', Icons.people)),
+              Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.25)),
+              Expanded(child: _buildStatItem('${stats['activeRequests']}', 'Aktif', Icons.access_time)),
+            ],
+          ),
+        );
+      },
     );
   }
 
