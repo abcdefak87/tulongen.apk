@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import 'screens/home_screen.dart';
 import 'screens/request_help_screen.dart';
 import 'screens/offer_help_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/inbox_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/notifications_screen.dart';
 import 'theme/app_theme.dart';
 import 'services/app_state.dart';
+import 'services/firestore_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -169,7 +173,11 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
   final _appState = AppState();
+  final _firestoreService = FirestoreService();
+  final _db = FirebaseFirestore.instance;
   late AnimationController _fabController;
+  StreamSubscription? _unreadMessagesSubscription;
+  StreamSubscription? _unreadNotificationsSubscription;
 
   final List<Widget> _screens = const [
     HomeScreen(),
@@ -187,12 +195,63 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+    _setupUnreadListeners();
+  }
+
+  void _setupUnreadListeners() {
+    final currentUserId = _firestoreService.currentUserId;
+    if (currentUserId == null) return;
+
+    // Listen for unread messages
+    _unreadMessagesSubscription = _db
+        .collection('chats')
+        .where('participants', arrayContains: currentUserId)
+        .snapshots()
+        .listen((snapshot) {
+      int unreadCount = 0;
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final lastSenderId = data['lastSenderId'] ?? '';
+        if (lastSenderId.isNotEmpty && lastSenderId != currentUserId) {
+          unreadCount++;
+        }
+      }
+      _appState.setUnreadMessages(unreadCount);
+    });
+
+    // Listen for unread notifications (offers on my requests)
+    _unreadNotificationsSubscription = _db
+        .collection('offers')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .listen((snapshot) async {
+      // Get my request IDs
+      final myRequests = await _db
+          .collection('requests')
+          .where('userId', isEqualTo: currentUserId)
+          .where('status', isEqualTo: 'open')
+          .get();
+      
+      final myRequestIds = myRequests.docs.map((d) => d.id).toSet();
+      
+      int unreadCount = 0;
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final requestId = data['requestId'] ?? '';
+        if (myRequestIds.contains(requestId)) {
+          unreadCount++;
+        }
+      }
+      _appState.setUnreadNotifications(unreadCount);
+    });
   }
 
   @override
   void dispose() {
     _appState.removeListener(_onStateChanged);
     _fabController.dispose();
+    _unreadMessagesSubscription?.cancel();
+    _unreadNotificationsSubscription?.cancel();
     super.dispose();
   }
 

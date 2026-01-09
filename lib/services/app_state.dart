@@ -188,14 +188,38 @@ class AppState extends ChangeNotifier {
   // Unread messages count - start from 0 (real data)
   int _unreadMessages = 0;
   int get unreadMessages => _unreadMessages;
+  
+  // Unread notifications count
+  int _unreadNotifications = 0;
+  int get unreadNotifications => _unreadNotifications;
+
+  void setUnreadMessages(int count) {
+    _unreadMessages = count;
+    notifyListeners();
+  }
+
+  void setUnreadNotifications(int count) {
+    _unreadNotifications = count;
+    notifyListeners();
+  }
 
   void markMessagesAsRead() {
     _unreadMessages = 0;
     notifyListeners();
   }
 
+  void markNotificationsAsRead() {
+    _unreadNotifications = 0;
+    notifyListeners();
+  }
+
   void addUnreadMessage() {
     _unreadMessages++;
+    notifyListeners();
+  }
+
+  void addUnreadNotification() {
+    _unreadNotifications++;
     notifyListeners();
   }
 

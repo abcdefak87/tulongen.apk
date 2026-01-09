@@ -1141,7 +1141,6 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     PriceType selectedType = PriceType.voluntary;
     final priceController = TextEditingController();
     final messageController = TextEditingController();
-    PaymentMethod selectedPayment = PaymentMethod.cash;
     bool isSubmitting = false;
 
     showModalBottomSheet(
@@ -1198,16 +1197,6 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 20),
-                Text('Metode Pembayaran', style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.getTextPrimary(context))),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(child: _buildPaymentOption(PaymentMethod.cash, 'Cash', selectedPayment, (p) => setModalState(() => selectedPayment = p))),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildPaymentOption(PaymentMethod.transfer, 'Transfer', selectedPayment, (p) => setModalState(() => selectedPayment = p))),
-                  ],
-                ),
                 const SizedBox(height: 20),
                 Text('Pesan (Opsional)', style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.getTextPrimary(context))),
                 const SizedBox(height: 12),

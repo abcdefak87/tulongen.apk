@@ -25,6 +25,16 @@ class _HomeScreenState extends State<HomeScreen> {
   final _appState = AppState();
   final _firestoreService = FirestoreService();
 
+  @override
+  void initState() {
+    super.initState();
+    _appState.addListener(_onAppStateChanged);
+  }
+
+  void _onAppStateChanged() {
+    if (mounted) setState(() {});
+  }
+
   List<HelpRequest> _filterRequests(List<HelpRequest> requests) {
     var filtered = requests.toList();
     
@@ -52,8 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _searchController.dispose();
-    // Note: _appState is a singleton, no need to remove listener as HomeScreen
-    // is part of IndexedStack and rarely disposed
+    _appState.removeListener(_onAppStateChanged);
     super.dispose();
   }
 
@@ -173,7 +182,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         GestureDetector(
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen())),
+          onTap: () {
+            _appState.markNotificationsAsRead();
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+          },
           child: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -181,7 +193,12 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppTheme.getBorderColor(context)),
             ),
-            child: Icon(Icons.notifications_none_rounded, color: textPrimary, size: 20),
+            child: Badge(
+              isLabelVisible: _appState.unreadNotifications > 0,
+              label: Text('${_appState.unreadNotifications}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+              backgroundColor: AppTheme.secondaryColor,
+              child: Icon(Icons.notifications_none_rounded, color: textPrimary, size: 20),
+            ),
           ),
         ),
       ],
