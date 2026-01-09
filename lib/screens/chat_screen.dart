@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/help_request.dart';
 import '../theme/app_theme.dart';
 import '../services/firestore_service.dart';
+import '../services/app_state.dart';
 
 class ChatScreen extends StatefulWidget {
   final HelpRequest request;
@@ -26,6 +27,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
   final _firestoreService = FirestoreService();
+  final _appState = AppState();
   final _db = FirebaseFirestore.instance;
   
   /// Generate consistent chat ID from two user IDs only (not request-specific)
@@ -595,6 +597,8 @@ class _ChatScreenState extends State<ChatScreen> {
     final currentUserId = _firestoreService.currentUserId;
     if (currentUserId == null) return;
     
+    final currentUserName = _appState.userName;
+    
     try {
       // Create chat document if not exists
       await _db.collection('chats').doc(_chatId).set({
@@ -602,6 +606,8 @@ class _ChatScreenState extends State<ChatScreen> {
         'participants': [currentUserId, widget.otherUserId],
         'lastMessage': text,
         'lastMessageTime': FieldValue.serverTimestamp(),
+        'lastSenderId': currentUserId,
+        'lastSenderName': currentUserName,
       }, SetOptions(merge: true));
       
       // Add message

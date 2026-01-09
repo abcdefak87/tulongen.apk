@@ -13,6 +13,7 @@ import 'screens/notifications_screen.dart';
 import 'theme/app_theme.dart';
 import 'services/app_state.dart';
 import 'services/firestore_service.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +23,9 @@ void main() async {
   
   // Initialize app state from SharedPreferences
   await AppState().init();
+  
+  // Initialize push notifications
+  await NotificationService().init();
   
   // Set status bar style - dark icons for light background
   SystemChrome.setSystemUIOverlayStyle(
@@ -198,6 +202,10 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
     _setupUnreadListeners();
   }
 
+  final _notificationService = NotificationService();
+  Set<String> _knownOfferIds = {};
+  Set<String> _knownMessageIds = {};
+
   void _setupUnreadListeners() {
     final currentUserId = _firestoreService.currentUserId;
     if (currentUserId == null) return;
@@ -212,8 +220,20 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
       for (final doc in snapshot.docs) {
         final data = doc.data();
         final lastSenderId = data['lastSenderId'] ?? '';
+        final lastMessage = data['lastMessage'] ?? '';
+        final lastSenderName = data['lastSenderName'] ?? 'Seseorang';
+        final chatId = doc.id;
+        
         if (lastSenderId.isNotEmpty && lastSenderId != currentUserId) {
           unreadCount++;
+          
+          // Show push notification for new messages
+          if (!_knownMessageIds.contains(chatId)) {
+            _knownMessageIds.add(chatId);
+            if (_knownMessageIds.length > 1) { // Skip first load
+              _notificationService.showMessageNotification(lastSenderName, lastMessage);
+            }
+          }
         }
       }
       _appState.setUnreadMessages(unreadCount);
@@ -233,13 +253,29 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
           .get();
       
       final myRequestIds = myRequests.docs.map((d) => d.id).toSet();
+      final myRequestTitles = <String, String>{};
+      for (final doc in myRequests.docs) {
+        myRequestTitles[doc.id] = (doc.data())['title'] ?? 'Permintaan';
+      }
       
       int unreadCount = 0;
       for (final doc in snapshot.docs) {
         final data = doc.data();
         final requestId = data['requestId'] ?? '';
+        final offerId = doc.id;
+        
         if (myRequestIds.contains(requestId)) {
           unreadCount++;
+          
+          // Show push notification for new offers
+          if (!_knownOfferIds.contains(offerId)) {
+            _knownOfferIds.add(offerId);
+            if (_knownOfferIds.length > 1) { // Skip first load
+              final helperName = data['helperName'] ?? 'Seseorang';
+              final requestTitle = myRequestTitles[requestId] ?? 'Permintaan';
+              _notificationService.showOfferNotification(helperName, requestTitle);
+            }
+          }
         }
       }
       _appState.setUnreadNotifications(unreadCount);

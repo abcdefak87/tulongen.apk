@@ -880,6 +880,9 @@ class _HelpProgressScreenState extends State<HelpProgressScreen> with TickerProv
 
   Widget _buildCompletedSection(BuildContext context, Map<String, dynamic> data) {
     final textPrimary = AppTheme.getTextPrimary(context);
+    final currentUserId = _firestoreService.currentUserId;
+    final isOwner = data['userId'] == currentUserId;
+    final helperName = data['helperName'] ?? 'Penolong';
     
     return Container(
       padding: const EdgeInsets.all(28),
@@ -906,7 +909,7 @@ class _HelpProgressScreenState extends State<HelpProgressScreen> with TickerProv
           Text('Bantuan Selesai! 🎉', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textPrimary)),
           const SizedBox(height: 8),
           Text(
-            'Terima kasih sudah saling membantu',
+            isOwner ? 'Terima kasih sudah menggunakan Tulongen' : 'Terima kasih sudah membantu!',
             style: TextStyle(color: AppTheme.getTextSecondary(context), fontSize: 14),
           ),
           const SizedBox(height: 20),
@@ -923,19 +926,22 @@ class _HelpProgressScreenState extends State<HelpProgressScreen> with TickerProv
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _showRatingDialog(data),
-                  icon: const Icon(Icons.star_outline),
-                  label: const Text('Beri Rating'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.accentColor,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              // Only owner (peminta) can rate the helper (penolong)
+              if (isOwner) ...[
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showRatingDialog(data, helperName),
+                    icon: const Icon(Icons.star_outline),
+                    label: const Text('Beri Rating'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.accentColor,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         ],
@@ -1157,7 +1163,7 @@ class _HelpProgressScreenState extends State<HelpProgressScreen> with TickerProv
     );
   }
 
-  void _showRatingDialog(Map<String, dynamic> data) {
+  void _showRatingDialog(Map<String, dynamic> data, String helperName) {
     int rating = 5;
     
     showDialog(
@@ -1168,7 +1174,9 @@ class _HelpProgressScreenState extends State<HelpProgressScreen> with TickerProv
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Beri Rating', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.getTextPrimary(context))),
+              Text('Beri Rating untuk $helperName', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.getTextPrimary(context)), textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              Text('Bagaimana pelayanan penolong?', style: TextStyle(fontSize: 13, color: AppTheme.getTextSecondary(context))),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
