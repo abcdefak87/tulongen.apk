@@ -22,7 +22,14 @@ cp deploy/tulongen-latest.apk "/var/www/tulongen/apk/tulongen-${VERSION}.apk"
 
 # 4. Update index.html with new APK filename
 echo "[4/4] Updating index.html..."
-sed "s|/apk/tulongen-[^\"]*\.apk|/apk/tulongen-${VERSION}.apk|g" deploy/index.html > /var/www/tulongen/index.html
+echo "Source link in deploy/index.html:"
+grep -o 'href="[^"]*apk[^"]*"' deploy/index.html || echo "No APK link found!"
+
+# Replace the APK link
+sed "s|tulongen-latest\.apk|tulongen-${VERSION}.apk|g" deploy/index.html > /var/www/tulongen/index.html
+
+echo "Result link in /var/www/tulongen/index.html:"
+grep -o 'href="[^"]*apk[^"]*"' /var/www/tulongen/index.html || echo "No APK link found!"
 
 # Show result
 echo ""
