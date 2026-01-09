@@ -50,6 +50,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           .where('userId', isEqualTo: currentUserId)
           .snapshots(),
       builder: (context, requestSnapshot) {
+        if (requestSnapshot.hasError) {
+          return Center(
+            child: Text('Error: ${requestSnapshot.error}', 
+              style: TextStyle(color: AppTheme.getTextSecondary(context))),
+          );
+        }
+        
         if (requestSnapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -65,27 +72,39 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           );
         }
 
+        final myRequestIds = myRequests.map((r) => r.id).toList();
+
         // Get all offers for my requests
         return StreamBuilder<QuerySnapshot>(
           stream: _db.collection('offers').snapshots(),
           builder: (context, offerSnapshot) {
+            if (offerSnapshot.hasError) {
+              return Center(
+                child: Text('Error: ${offerSnapshot.error}',
+                  style: TextStyle(color: AppTheme.getTextSecondary(context))),
+              );
+            }
+            
             if (offerSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
 
             final allOffers = offerSnapshot.data?.docs ?? [];
-            final myRequestIds = myRequests.map((r) => r.id).toSet();
+            final myRequestIdSet = myRequestIds.toSet();
             
             // Filter offers for my requests
             final myOffers = allOffers.where((o) {
-              final data = o.data() as Map<String, dynamic>;
-              return myRequestIds.contains(data['requestId']);
+              final data = o.data() as Map<String, dynamic>?;
+              if (data == null) return false;
+              return myRequestIdSet.contains(data['requestId']);
             }).toList();
 
             // Sort by createdAt descending
             myOffers.sort((a, b) {
-              final aTime = ((a.data() as Map)['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
-              final bTime = ((b.data() as Map)['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
+              final aData = a.data() as Map<String, dynamic>?;
+              final bData = b.data() as Map<String, dynamic>?;
+              final aTime = (aData?['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
+              final bTime = (bData?['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
               return bTime.compareTo(aTime);
             });
 
@@ -102,18 +121,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               padding: const EdgeInsets.all(16),
               itemCount: myOffers.length,
               itemBuilder: (context, index) {
-                final offer = myOffers[index].data() as Map<String, dynamic>;
+                final offerData = myOffers[index].data() as Map<String, dynamic>?;
+                if (offerData == null) return const SizedBox.shrink();
+                
                 final offerId = myOffers[index].id;
-                final requestId = offer['requestId'] ?? '';
+                final requestId = offerData['requestId'] ?? '';
                 
                 // Find the request for this offer
-                final requestDoc = myRequests.firstWhere(
-                  (r) => r.id == requestId,
-                  orElse: () => myRequests.first,
-                );
-                final requestData = requestDoc.data() as Map<String, dynamic>;
+                QueryDocumentSnapshot? requestDoc;
+                try {
+                  requestDoc = myRequests.firstWhere((r) => r.id == requestId);
+                } catch (_) {
+                  requestDoc = null;
+                }
                 
-                return _buildOfferNotificationCard(context, offer, offerId, requestData, requestDoc.id);
+                final requestData = (requestDoc?.data() as Map<String, dynamic>?) ?? {};
+                
+                return _buildOfferNotificationCard(context, offerData, offerId, requestData, requestId);
               },
             );
           },
