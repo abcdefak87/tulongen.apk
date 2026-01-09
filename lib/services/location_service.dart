@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -35,11 +36,19 @@ class LocationService {
     return true;
   }
 
+  /// Error message from last operation
+  String? _lastError;
+  String? get lastError => _lastError;
+
   /// Get current location
   Future<Position?> getCurrentLocation() async {
+    _lastError = null;
     try {
       final hasPermission = await checkPermission();
-      if (!hasPermission) return null;
+      if (!hasPermission) {
+        _lastError = 'Izin lokasi tidak diberikan';
+        return null;
+      }
 
       _currentPosition = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
@@ -49,7 +58,14 @@ class LocationService {
       );
 
       return _currentPosition;
+    } on TimeoutException {
+      _lastError = 'Waktu mendapatkan lokasi habis';
+      return null;
+    } on LocationServiceDisabledException {
+      _lastError = 'Layanan lokasi tidak aktif';
+      return null;
     } catch (e) {
+      _lastError = 'Gagal mendapatkan lokasi: $e';
       return null;
     }
   }

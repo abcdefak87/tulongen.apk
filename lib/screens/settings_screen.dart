@@ -100,7 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 textPrimary: textPrimary,
                 textSecondary: textSecondary,
               ),
-              Divider(height: 1, color: isDark ? Colors.white12 : Colors.grey.shade200),
+              Divider(height: 1, color: AppTheme.getBorderColor(context)),
               _buildDropdownTile(
                 icon: Icons.language_outlined,
                 title: 'Bahasa',
@@ -129,7 +129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 textPrimary: textPrimary,
                 textSecondary: textSecondary,
               ),
-              Divider(height: 1, color: isDark ? Colors.white12 : Colors.grey.shade200),
+              Divider(height: 1, color: AppTheme.getBorderColor(context)),
               _buildActionTile(
                 icon: Icons.delete_outline,
                 title: 'Hapus Akun',
@@ -245,37 +245,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: _currentPasswordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Password Saat Ini',
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _newPasswordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Password Baru',
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _confirmPasswordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Konfirmasi Password Baru',
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
+              Builder(
+                builder: (context) {
+                  final surfaceColor = AppTheme.getSurfaceColor(context);
+                  return Column(
+                    children: [
+                      TextField(
+                        controller: _currentPasswordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: 'Password Saat Ini',
+                          filled: true,
+                          fillColor: surfaceColor,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _newPasswordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: 'Password Baru',
+                          filled: true,
+                          fillColor: surfaceColor,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _confirmPasswordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: 'Konfirmasi Password Baru',
+                          filled: true,
+                          fillColor: surfaceColor,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ],
           ),
@@ -384,7 +393,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 hintText: 'Password',
                 hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.5)),
                 filled: true,
-                fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
+                fillColor: AppTheme.getSurfaceColor(context),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 prefixIcon: Icon(Icons.lock_outline, color: AppTheme.secondaryColor),
               ),

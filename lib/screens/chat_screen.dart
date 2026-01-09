@@ -28,11 +28,12 @@ class _ChatScreenState extends State<ChatScreen> {
   final _firestoreService = FirestoreService();
   final _db = FirebaseFirestore.instance;
   
+  /// Generate consistent chat ID from two user IDs only (not request-specific)
+  /// This ensures same users always share the same chat thread
   String get _chatId {
-    // Create consistent chat ID from both user IDs
     final ids = [_firestoreService.currentUserId ?? '', widget.otherUserId];
     ids.sort();
-    return '${widget.request.id}_${ids.join('_')}';
+    return ids.join('_');
   }
 
   @override
@@ -147,6 +148,19 @@ class _ChatScreenState extends State<ChatScreen> {
           .orderBy('timestamp', descending: false)
           .snapshots(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 64, color: AppTheme.secondaryColor.withValues(alpha: 0.5)),
+                const SizedBox(height: 16),
+                Text('Gagal memuat pesan', style: TextStyle(color: textSecondary)),
+              ],
+            ),
+          );
+        }
+        
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -170,7 +184,7 @@ class _ChatScreenState extends State<ChatScreen> {
         
         // Auto scroll to bottom when new message
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scrollController.hasClients) {
+          if (_scrollController.hasClients && mounted) {
             _scrollController.animateTo(
               _scrollController.position.maxScrollExtent,
               duration: const Duration(milliseconds: 300),
@@ -184,16 +198,17 @@ class _ChatScreenState extends State<ChatScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           itemCount: messages.length,
           itemBuilder: (context, index) {
-            final data = messages[index].data() as Map<String, dynamic>;
+            final doc = messages[index];
+            final data = doc.data() as Map<String, dynamic>;
             final isMe = data['senderId'] == _firestoreService.currentUserId;
-            return _buildMessageBubble(context, data, isMe);
+            return _buildMessageBubble(context, data, isMe, doc.id);
           },
         );
       },
     );
   }
 
-  Widget _buildMessageBubble(BuildContext context, Map<String, dynamic> message, bool isMe) {
+  Widget _buildMessageBubble(BuildContext context, Map<String, dynamic> message, bool isMe, String messageId) {
     final cardColor = AppTheme.getCardColor(context);
     final textPrimary = AppTheme.getTextPrimary(context);
     final textSecondary = AppTheme.getTextSecondary(context);
@@ -214,25 +229,28 @@ class _ChatScreenState extends State<ChatScreen> {
             const SizedBox(width: 8),
           ],
           Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isMe ? AppTheme.primaryColor : cardColor,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18),
-                  topRight: const Radius.circular(18),
-                  bottomLeft: Radius.circular(isMe ? 18 : 4),
-                  bottomRight: Radius.circular(isMe ? 4 : 18),
+            child: GestureDetector(
+              onLongPress: isMe ? () => _showDeleteMessageDialog(messageId, message['message'] ?? '') : null,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isMe ? AppTheme.primaryColor : cardColor,
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(18),
+                    topRight: const Radius.circular(18),
+                    bottomLeft: Radius.circular(isMe ? 18 : 4),
+                    bottomRight: Radius.circular(isMe ? 4 : 18),
+                  ),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5)],
                 ),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5)],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(message['message'] ?? '', style: TextStyle(color: isMe ? Colors.white : textPrimary, fontSize: 14, height: 1.4)),
-                  const SizedBox(height: 4),
-                  Text(_formatTime(timestamp), style: TextStyle(fontSize: 10, color: isMe ? Colors.white70 : textSecondary)),
-                ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(message['message'] ?? '', style: TextStyle(color: isMe ? Colors.white : textPrimary, fontSize: 14, height: 1.4)),
+                    const SizedBox(height: 4),
+                    Text(_formatTime(timestamp), style: TextStyle(fontSize: 10, color: isMe ? Colors.white70 : textSecondary)),
+                  ],
+                ),
               ),
             ),
           ),
@@ -241,48 +259,166 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  void _showDeleteMessageDialog(String messageId, String messagePreview) {
+    final cardColor = AppTheme.getCardColor(context);
+    final textPrimary = AppTheme.getTextPrimary(context);
+    final textSecondary = AppTheme.getTextSecondary(context);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Hapus Pesan?', style: TextStyle(color: textPrimary)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                messagePreview.length > 50 ? '${messagePreview.substring(0, 50)}...' : messagePreview,
+                style: TextStyle(color: textSecondary, fontSize: 13),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text('Pesan akan dihapus permanen', style: TextStyle(color: textSecondary, fontSize: 12)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final success = await _firestoreService.deleteMessage(_chatId, messageId);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(success ? 'Pesan dihapus' : 'Gagal menghapus pesan'),
+                    backgroundColor: success ? AppTheme.accentColor : AppTheme.secondaryColor,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.secondaryColor),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInputArea(BuildContext context) {
     final cardColor = AppTheme.getCardColor(context);
-    final bgColor = AppTheme.getBackgroundColor(context);
     final textSecondary = AppTheme.getTextSecondary(context);
     final textPrimary = AppTheme.getTextPrimary(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Use slightly different color for better contrast
+    final inputBgColor = isDark 
+        ? Colors.white.withValues(alpha: 0.08) 
+        : Colors.grey.shade100;
     
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: cardColor,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08), blurRadius: 12, offset: const Offset(0, -2))],
       ),
       child: SafeArea(
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            IconButton(
-              icon: Icon(Icons.add_circle_outline, color: AppTheme.primaryColor),
-              onPressed: () => _showQuickActions(),
+            Container(
+              height: 44,
+              width: 44,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                icon: Icon(Icons.add, color: AppTheme.primaryColor, size: 22),
+                onPressed: () => _showQuickActions(),
+                padding: EdgeInsets.zero,
+              ),
             ),
+            const SizedBox(width: 10),
             Expanded(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(24)),
-                child: TextField(
-                  controller: _messageController,
-                  style: TextStyle(color: textPrimary),
-                  decoration: InputDecoration(
-                    hintText: 'Ketik pesan...',
-                    hintStyle: TextStyle(color: textSecondary),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                constraints: const BoxConstraints(minHeight: 44),
+                decoration: BoxDecoration(
+                  color: inputBgColor,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: isDark 
+                        ? Colors.white.withValues(alpha: 0.12) 
+                        : Colors.grey.shade300,
+                    width: 1,
                   ),
-                  onSubmitted: (_) => _sendMessage(),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _messageController,
+                        style: TextStyle(color: textPrimary, fontSize: 15),
+                        maxLines: 4,
+                        minLines: 1,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: InputDecoration(
+                          hintText: 'Ketik pesan...',
+                          hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.7)),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          isDense: true,
+                        ),
+                        onSubmitted: (_) => _sendMessage(),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: IconButton(
+                        icon: Icon(Icons.emoji_emotions_outlined, color: textSecondary, size: 22),
+                        onPressed: () {},
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Container(
-              decoration: BoxDecoration(color: AppTheme.primaryColor, shape: BoxShape.circle),
+              height: 44,
+              width: 44,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppTheme.primaryColor, Color(0xFF8B85FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
               child: IconButton(
-                icon: const Icon(Icons.send, color: Colors.white, size: 20),
+                icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
                 onPressed: _sendMessage,
+                padding: EdgeInsets.zero,
               ),
             ),
           ],

@@ -86,6 +86,9 @@ class FirestoreService {
         .where('status', isEqualTo: HelpStatus.open.name)
         .where('category', isEqualTo: category.name)
         .snapshots()
+        .handleError((error) {
+          debugPrint('Error getting requests by category: $error');
+        })
         .map((snapshot) {
           final requests = snapshot.docs.map((doc) => _docToHelpRequest(doc)).toList();
           requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -100,6 +103,9 @@ class FirestoreService {
         .collection('requests')
         .where('userId', isEqualTo: currentUserId)
         .snapshots()
+        .handleError((error) {
+          debugPrint('Error getting my requests: $error');
+        })
         .map((snapshot) {
           final requests = snapshot.docs.map((doc) => _docToHelpRequest(doc)).toList();
           requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -114,8 +120,45 @@ class FirestoreService {
         .collection('requests')
         .where('helperId', isEqualTo: currentUserId)
         .snapshots()
+        .handleError((error) {
+          debugPrint('Error getting my helping: $error');
+        })
         .map((snapshot) {
           final requests = snapshot.docs.map((doc) => _docToHelpRequest(doc)).toList();
+          requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return requests;
+        });
+  }
+
+  // Get my active requests (in progress, on the way, arrived, working)
+  Stream<List<HelpRequest>> getMyActiveRequests() {
+    if (currentUserId == null) return Stream.value([]);
+    
+    final activeStatuses = [
+      HelpStatus.inProgress.name,
+      HelpStatus.onTheWay.name,
+      HelpStatus.arrived.name,
+      HelpStatus.working.name,
+    ];
+    
+    return _db
+        .collection('requests')
+        .snapshots()
+        .handleError((error) {
+          debugPrint('Error getting active requests: $error');
+        })
+        .map((snapshot) {
+          final requests = snapshot.docs
+              .where((doc) {
+                final data = doc.data();
+                final status = data['status'] as String?;
+                final userId = data['userId'] as String?;
+                final helperId = data['helperId'] as String?;
+                return activeStatuses.contains(status) &&
+                       (userId == currentUserId || helperId == currentUserId);
+              })
+              .map((doc) => _docToHelpRequest(doc))
+              .toList();
           requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
           return requests;
         });
@@ -127,8 +170,23 @@ class FirestoreService {
       final updates = <String, dynamic>{'status': status.name};
       if (helperId != null) updates['helperId'] = helperId;
       await _db.collection('requests').doc(requestId).update(updates);
+      debugPrint('updateRequestStatus: $requestId -> ${status.name}');
       return true;
     } catch (e) {
+      debugPrint('updateRequestStatus error: $e');
+      return false;
+    }
+  }
+
+  // Check if request is still open (for validation before accepting offer)
+  Future<bool> isRequestOpen(String requestId) async {
+    try {
+      final doc = await _db.collection('requests').doc(requestId).get();
+      if (!doc.exists) return false;
+      final status = doc.data()?['status'] as String?;
+      return status == HelpStatus.open.name;
+    } catch (e) {
+      debugPrint('isRequestOpen error: $e');
       return false;
     }
   }
@@ -219,8 +277,32 @@ class FirestoreService {
     required String message,
     int? offeredPrice,
   }) async {
-    if (currentUserId == null) return null;
+    if (currentUserId == null) {
+      debugPrint('createOffer: No user logged in');
+      return null;
+    }
+    
     try {
+      // Check if request is still open
+      final isOpen = await isRequestOpen(requestId);
+      if (!isOpen) {
+        debugPrint('createOffer: Request is no longer open');
+        return null;
+      }
+      
+      // Check if user already has pending offer for this request
+      final existingOffer = await _db
+          .collection('offers')
+          .where('requestId', isEqualTo: requestId)
+          .where('helperId', isEqualTo: currentUserId)
+          .where('status', isEqualTo: 'pending')
+          .get();
+      
+      if (existingOffer.docs.isNotEmpty) {
+        debugPrint('createOffer: User already has pending offer');
+        return null;
+      }
+      
       final userData = await getUserData(currentUserId!);
       final doc = await _db.collection('offers').add({
         'requestId': requestId,
@@ -231,8 +313,10 @@ class FirestoreService {
         'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
       });
+      debugPrint('createOffer: Created offer ${doc.id}');
       return doc.id;
     } catch (e) {
+      debugPrint('createOffer error: $e');
       return null;
     }
   }
@@ -242,6 +326,9 @@ class FirestoreService {
         .collection('offers')
         .where('requestId', isEqualTo: requestId)
         .snapshots()
+        .handleError((error) {
+          debugPrint('Error getting offers: $error');
+        })
         .map((snapshot) {
           final offers = snapshot.docs.map((doc) {
             final data = doc.data();
@@ -269,14 +356,96 @@ class FirestoreService {
   }
 
   Future<bool> acceptOffer(String offerId, String requestId, String helperId) async {
+    if (currentUserId == null) {
+      debugPrint('acceptOffer: No user logged in');
+      return false;
+    }
+    
     try {
-      await _db.collection('offers').doc(offerId).update({'status': 'accepted'});
-      await _db.collection('requests').doc(requestId).update({
+      // 1. Check if request is still open
+      final isOpen = await isRequestOpen(requestId);
+      if (!isOpen) {
+        debugPrint('acceptOffer: Request is no longer open');
+        return false;
+      }
+      
+      // 2. Get helper name
+      final helperData = await getUserData(helperId);
+      final helperName = helperData?['name'] ?? 'Penolong';
+      
+      // 3. Use batch to update atomically
+      final batch = _db.batch();
+      
+      // Accept this offer
+      batch.update(_db.collection('offers').doc(offerId), {'status': 'accepted'});
+      
+      // Update request status
+      batch.update(_db.collection('requests').doc(requestId), {
         'status': HelpStatus.inProgress.name,
         'helperId': helperId,
+        'helperName': helperName,
+        'acceptedAt': FieldValue.serverTimestamp(),
       });
+      
+      // 4. Reject all other pending offers for this request
+      final otherOffers = await _db
+          .collection('offers')
+          .where('requestId', isEqualTo: requestId)
+          .where('status', isEqualTo: 'pending')
+          .get();
+      
+      for (final doc in otherOffers.docs) {
+        if (doc.id != offerId) {
+          batch.update(doc.reference, {'status': 'rejected'});
+        }
+      }
+      
+      await batch.commit();
+      debugPrint('acceptOffer: Successfully accepted offer $offerId');
       return true;
     } catch (e) {
+      debugPrint('acceptOffer error: $e');
+      return false;
+    }
+  }
+
+  // ============ CHAT / MESSAGES ============
+
+  /// Delete a single message from a chat
+  Future<bool> deleteMessage(String chatId, String messageId) async {
+    try {
+      await _db
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc(messageId)
+          .delete();
+      return true;
+    } catch (e) {
+      debugPrint('deleteMessage error: $e');
+      return false;
+    }
+  }
+
+  /// Delete entire chat conversation
+  Future<bool> deleteChat(String chatId) async {
+    try {
+      // Delete all messages first
+      final messages = await _db
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .get();
+      
+      for (final doc in messages.docs) {
+        await doc.reference.delete();
+      }
+      
+      // Delete chat document
+      await _db.collection('chats').doc(chatId).delete();
+      return true;
+    } catch (e) {
+      debugPrint('deleteChat error: $e');
       return false;
     }
   }

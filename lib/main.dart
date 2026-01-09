@@ -149,11 +149,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     'TULONGEN',
                     style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Saling Bantu, Saling Peduli',
-                    style: TextStyle(fontSize: 16, color: Colors.white.withValues(alpha: 0.8)),
-                  ),
                 ],
               ),
             ),
@@ -171,9 +166,10 @@ class MainNavigation extends StatefulWidget {
   State<MainNavigation> createState() => _MainNavigationState();
 }
 
-class _MainNavigationState extends State<MainNavigation> {
+class _MainNavigationState extends State<MainNavigation> with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
   final _appState = AppState();
+  late AnimationController _fabController;
 
   final List<Widget> _screens = const [
     HomeScreen(),
@@ -187,11 +183,16 @@ class _MainNavigationState extends State<MainNavigation> {
   void initState() {
     super.initState();
     _appState.addListener(_onStateChanged);
+    _fabController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
   }
 
   @override
   void dispose() {
     _appState.removeListener(_onStateChanged);
+    _fabController.dispose();
     super.dispose();
   }
 
@@ -202,65 +203,138 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = AppTheme.getBackgroundColor(context);
     
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
       ),
+      extendBody: true,
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Container(
+          height: 72,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1C1C1C) : Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.04),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildNavItem(0, Icons.home_rounded, Icons.home_outlined, 'Beranda'),
+              _buildNavItem(1, Icons.edit_note_rounded, Icons.edit_note_outlined, 'Minta'),
+              _buildCenterNavItem(),
+              _buildNavItem(3, Icons.chat_bubble_rounded, Icons.chat_bubble_outline_rounded, 'Pesan', badge: _appState.unreadMessages),
+              _buildNavItem(4, Icons.person_rounded, Icons.person_outline_rounded, 'Profil'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData activeIcon, IconData inactiveIcon, String label, {int badge = 0}) {
+    final isSelected = _currentIndex == index;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final unselectedColor = isDark ? Colors.grey.shade600 : Colors.grey.shade400;
+    
+    return GestureDetector(
+      onTap: () {
+        setState(() => _currentIndex = index);
+        if (index == 3) _appState.markMessagesAsRead();
+      },
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        width: 58,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
+              padding: EdgeInsets.symmetric(
+                horizontal: isSelected ? 14 : 10,
+                vertical: isSelected ? 8 : 6,
+              ),
+              decoration: BoxDecoration(
+                color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.12) : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Badge(
+                isLabelVisible: badge > 0,
+                label: Text('$badge', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+                backgroundColor: AppTheme.secondaryColor,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    isSelected ? activeIcon : inactiveIcon,
+                    key: ValueKey(isSelected),
+                    color: isSelected ? AppTheme.primaryColor : unselectedColor,
+                    size: isSelected ? 24 : 22,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(
+                fontSize: isSelected ? 11 : 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected ? AppTheme.primaryColor : unselectedColor,
+              ),
+              child: Text(label),
             ),
           ],
         ),
-        child: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-            if (index == 3) {
-              _appState.markMessagesAsRead();
-            }
-          },
-          destinations: [
-            const NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home),
-              label: 'Beranda',
+      ),
+    );
+  }
+
+  Widget _buildCenterNavItem() {
+    final isSelected = _currentIndex == 2;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return GestureDetector(
+      onTap: () => setState(() => _currentIndex = 2),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primaryColor : AppTheme.primaryColor.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.volunteer_activism_rounded,
+              color: Colors.white,
+              size: 22,
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.front_hand_outlined),
-              selectedIcon: Icon(Icons.front_hand),
-              label: 'Tulong',
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.volunteer_activism_outlined),
-              selectedIcon: Icon(Icons.volunteer_activism),
-              label: 'Nulong',
-            ),
-            NavigationDestination(
-              icon: Badge(
-                isLabelVisible: _appState.unreadMessages > 0,
-                label: Text('${_appState.unreadMessages}'),
-                child: const Icon(Icons.chat_bubble_outline),
+            const SizedBox(height: 2),
+            Text(
+              'Bantu',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withValues(alpha: 0.95),
               ),
-              selectedIcon: Badge(
-                isLabelVisible: _appState.unreadMessages > 0,
-                label: Text('${_appState.unreadMessages}'),
-                child: const Icon(Icons.chat_bubble),
-              ),
-              label: 'Pesan',
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: 'Profil',
             ),
           ],
         ),

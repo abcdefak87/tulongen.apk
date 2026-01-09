@@ -9,11 +9,27 @@ class AppTheme {
   static const Color textPrimary = Color(0xFF2D3142);
   static const Color textSecondary = Color(0xFF9094A6);
 
-  // Dark theme colors
-  static const Color darkBackgroundColor = Color(0xFF1A1A2E);
-  static const Color darkCardColor = Color(0xFF16213E);
-  static const Color darkTextPrimary = Color(0xFFEAEAEA);
-  static const Color darkTextSecondary = Color(0xFF8B8B9A);
+  // Dark theme colors - Pure black
+  static const Color darkBackgroundColor = Color(0xFF000000);
+  static const Color darkCardColor = Color(0xFF141414);
+  static const Color darkSurfaceColor = Color(0xFF1C1C1C);
+  static const Color darkTextPrimary = Color(0xFFF5F5F5);
+  static const Color darkTextSecondary = Color(0xFFA0A0A0);
+
+  // Consistent spacing
+  static const double spacingXs = 4;
+  static const double spacingSm = 8;
+  static const double spacingMd = 12;
+  static const double spacingLg = 16;
+  static const double spacingXl = 20;
+  static const double spacingXxl = 24;
+
+  // Consistent border radius
+  static const double radiusSm = 8;
+  static const double radiusMd = 12;
+  static const double radiusLg = 16;
+  static const double radiusXl = 20;
+  static const double radiusXxl = 24;
 
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
@@ -209,6 +225,12 @@ class AppTheme {
         : cardColor;
   }
 
+  static Color getSurfaceColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark 
+        ? darkSurfaceColor 
+        : Colors.grey.shade50;
+  }
+
   static Color getTextPrimary(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark 
         ? darkTextPrimary 
@@ -219,5 +241,17 @@ class AppTheme {
     return Theme.of(context).brightness == Brightness.dark 
         ? darkTextSecondary 
         : textSecondary;
+  }
+
+  static Color getBorderColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark 
+        ? Colors.white.withValues(alpha: 0.1) 
+        : Colors.grey.shade200;
+  }
+
+  static Color getOverlayColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark 
+        ? Colors.white.withValues(alpha: 0.05) 
+        : Colors.black.withValues(alpha: 0.03);
   }
 }

@@ -92,7 +92,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Animated icon container
+          // Animated icon container - no shadow for cleaner look
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 0.8, end: 1.0),
             duration: const Duration(milliseconds: 600),
@@ -103,15 +103,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 padding: const EdgeInsets.all(48),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [data.color.withValues(alpha: 0.25), data.color.withValues(alpha: 0.08)],
+                    colors: [data.color.withValues(alpha: 0.2), data.color.withValues(alpha: 0.08)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(color: data.color.withValues(alpha: 0.25), blurRadius: 40, spreadRadius: 8),
-                  ],
-                  border: Border.all(color: data.color.withValues(alpha: 0.15), width: 2),
+                  border: Border.all(color: data.color.withValues(alpha: 0.2), width: 2),
                 ),
                 child: Icon(data.icon, size: 80, color: data.color),
               ),
@@ -142,9 +139,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           decoration: BoxDecoration(
             color: isActive ? _pages[_currentPage].color : (isDark ? Colors.white24 : Colors.grey.shade300),
             borderRadius: BorderRadius.circular(5),
-            boxShadow: isActive ? [
-              BoxShadow(color: _pages[_currentPage].color.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 2)),
-            ] : null,
           ),
         );
       }),

@@ -144,71 +144,42 @@ class _OfferHelpScreenState extends State<OfferHelpScreen> {
   }
 
   Widget _buildHeader(Color textPrimary, Color textSecondary) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text('Nulong ', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: textPrimary)),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [AppTheme.accentColor, Color(0xFF00F5C4)]),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text('Bantu Sesama', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text('Lihat siapa yang butuh bantuan di sekitarmu', style: TextStyle(fontSize: 14, color: textSecondary)),
-      ],
-    );
+    return Text('Bantu Orang', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textPrimary));
   }
 
   Widget _buildMotivationCard(int count) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = AppTheme.getCardColor(context);
+    final textPrimary = AppTheme.getTextPrimary(context);
+    final textSecondary = AppTheme.getTextSecondary(context);
+    
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppTheme.accentColor, Color(0xFF00F5C4)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: AppTheme.accentColor.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.getBorderColor(context)),
       ),
       child: Row(
         children: [
+          Icon(Icons.format_quote, size: 18, color: textSecondary),
+          const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _currentQuote,
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500, fontStyle: FontStyle.italic),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.track_changes, color: Colors.white, size: 14),
-                      const SizedBox(width: 4),
-                      Text('$count orang butuh bantuanmu', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-              ],
+            child: Text(
+              _currentQuote,
+              style: TextStyle(color: textSecondary, fontSize: 12, fontStyle: FontStyle.italic),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 10),
           Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-            child: const Icon(Icons.star_rounded, size: 32, color: Colors.white),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text('$count', style: TextStyle(fontSize: 12, color: AppTheme.primaryColor, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -295,11 +266,15 @@ class _OfferHelpScreenState extends State<OfferHelpScreen> {
               selected: isSelected,
               onSelected: (selected) async {
                 if (filter == 'Terdekat' && selected) {
+                  if (!mounted) return;
                   setState(() => _isLoadingLocation = true);
                   await _locationService.getCurrentLocation();
+                  if (!mounted) return;
                   setState(() => _isLoadingLocation = false);
                 }
-                setState(() => _selectedFilter = filter);
+                if (mounted) {
+                  setState(() => _selectedFilter = filter);
+                }
               },
               backgroundColor: cardColor,
               selectedColor: AppTheme.primaryColor.withValues(alpha: 0.15),
@@ -323,6 +298,7 @@ class _OfferHelpScreenState extends State<OfferHelpScreen> {
   Widget _buildEnhancedHelpCard(HelpRequest request, Color cardColor, Color textPrimary, Color textSecondary) {
     final currentPos = _locationService.currentPosition;
     String? distanceText;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     if (currentPos != null && request.latitude != null && request.longitude != null) {
       final distance = _locationService.calculateDistance(
@@ -334,96 +310,68 @@ class _OfferHelpScreenState extends State<OfferHelpScreen> {
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.getBorderColor(context)),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(14),
           onTap: () => _navigateToDetail(request),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: _getCategoryColor(request.category).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(request.categoryIcon, size: 24, color: _getCategoryColor(request.category)),
+                      child: Icon(request.categoryIcon, size: 18, color: _getCategoryColor(request.category)),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Icon(request.userAvatar, size: 18, color: AppTheme.primaryColor),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(request.userName, style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary), overflow: TextOverflow.ellipsis),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(request.timeAgo, style: TextStyle(fontSize: 12, color: textSecondary)),
+                          Text(request.userName, style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: textPrimary), overflow: TextOverflow.ellipsis),
+                          Text(request.timeAgo, style: TextStyle(fontSize: 11, color: textSecondary)),
                         ],
                       ),
                     ),
                     _buildStatusBadge(request.status),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Text(request.title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary)),
-                const SizedBox(height: 8),
-                Text(request.description, style: TextStyle(fontSize: 14, color: textSecondary, height: 1.4), maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 12),
-                _buildPriceInfo(request, textSecondary),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
+                Text(request.title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary)),
+                const SizedBox(height: 4),
+                Text(request.description, style: TextStyle(fontSize: 13, color: textSecondary, height: 1.3), maxLines: 2, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 10),
                 Row(
                   children: [
-                    if (request.location != null) ...[
-                      Icon(Icons.location_on, size: 14, color: textSecondary),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(request.location!, style: TextStyle(fontSize: 12, color: textSecondary), overflow: TextOverflow.ellipsis),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getPriceColor(request.priceType).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                    ],
-                    if (distanceText != null) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.near_me, size: 12, color: AppTheme.primaryColor),
-                            const SizedBox(width: 4),
-                            Text(distanceText, style: TextStyle(fontSize: 11, color: AppTheme.primaryColor, fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ),
-                    ],
-                    const Spacer(),
-                    ElevatedButton.icon(
-                      onPressed: () => _navigateToDetail(request),
-                      icon: const Icon(Icons.handshake, size: 16),
-                      label: const Text('Nulong'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.accentColor,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        minimumSize: Size.zero,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
+                      child: Text(request.priceDisplay, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: _getPriceColor(request.priceType))),
                     ),
+                    if (request.location != null) ...[
+                      const SizedBox(width: 8),
+                      Icon(Icons.location_on_outlined, size: 12, color: textSecondary),
+                      const SizedBox(width: 2),
+                      Expanded(
+                        child: Text(request.location!, style: TextStyle(fontSize: 11, color: textSecondary), overflow: TextOverflow.ellipsis),
+                      ),
+                    ] else
+                      const Spacer(),
+                    if (distanceText != null)
+                      Text(distanceText, style: TextStyle(fontSize: 11, color: AppTheme.primaryColor, fontWeight: FontWeight.w500)),
                   ],
                 ),
               ],
@@ -434,45 +382,23 @@ class _OfferHelpScreenState extends State<OfferHelpScreen> {
     );
   }
 
-  Widget _buildPriceInfo(HelpRequest request, Color textSecondary) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: _getPriceColor(request.priceType).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _getPriceColor(request.priceType).withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(_getPriceIcon(request.priceType), size: 16, color: _getPriceColor(request.priceType)),
-          const SizedBox(width: 6),
-          Text(request.priceDisplay, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _getPriceColor(request.priceType))),
-          const SizedBox(width: 12),
-          Container(width: 1, height: 16, color: _getPriceColor(request.priceType).withValues(alpha: 0.3)),
-          const SizedBox(width: 12),
-          Icon(Icons.payments_outlined, size: 14, color: textSecondary),
-          const SizedBox(width: 4),
-          Text(request.paymentMethodsDisplay, style: TextStyle(fontSize: 12, color: textSecondary)),
-        ],
-      ),
-    );
-  }
-
   Widget _buildStatusBadge(HelpStatus status) {
     Color color;
     String text;
     switch (status) {
-      case HelpStatus.open: color = AppTheme.accentColor; text = 'Butuh Bantuan'; break;
-      case HelpStatus.negotiating: color = const Color(0xFFFF9F43); text = 'Negosiasi'; break;
-      case HelpStatus.inProgress: color = AppTheme.primaryColor; text = 'Sedang Dibantu'; break;
-      case HelpStatus.completed: color = Colors.grey; text = 'Selesai'; break;
-      case HelpStatus.cancelled: color = AppTheme.secondaryColor; text = 'Dibatalkan'; break;
+      case HelpStatus.open: color = AppTheme.accentColor; text = 'Butuh Bantuan';
+      case HelpStatus.negotiating: color = const Color(0xFFFF9F43); text = 'Negosiasi';
+      case HelpStatus.inProgress: color = AppTheme.primaryColor; text = 'Dibantu';
+      case HelpStatus.onTheWay: color = const Color(0xFF54A0FF); text = 'Perjalanan';
+      case HelpStatus.arrived: color = const Color(0xFF9B59B6); text = 'Sampai';
+      case HelpStatus.working: color = const Color(0xFFFF9F43); text = 'Dikerjakan';
+      case HelpStatus.completed: color = Colors.grey; text = 'Selesai';
+      case HelpStatus.cancelled: color = AppTheme.secondaryColor; text = 'Batal';
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-      child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+      child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: color)),
     );
   }
 

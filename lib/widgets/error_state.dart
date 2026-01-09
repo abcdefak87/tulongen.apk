@@ -38,7 +38,7 @@ class ErrorState extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               title ?? (isNetworkError ? 'Tidak Ada Koneksi' : 'Terjadi Kesalahan'),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.getTextPrimary(context)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
@@ -46,7 +46,7 @@ class ErrorState extends StatelessWidget {
               subtitle ?? (isNetworkError 
                   ? 'Periksa koneksi internet kamu dan coba lagi'
                   : 'Maaf, terjadi kesalahan. Silakan coba lagi.'),
-              style: TextStyle(fontSize: 14, color: AppTheme.textSecondary, height: 1.5),
+              style: TextStyle(fontSize: 14, color: AppTheme.getTextSecondary(context), height: 1.5),
               textAlign: TextAlign.center,
             ),
             if (onRetry != null) ...[

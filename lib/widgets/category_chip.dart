@@ -34,7 +34,7 @@ class CategoryChip extends StatelessWidget {
           color: isSelected ? color : cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? color : (isDark ? Colors.white12 : Colors.grey.shade200),
+            color: isSelected ? color : AppTheme.getBorderColor(context),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: [

@@ -16,28 +16,54 @@ class AppState extends ChangeNotifier {
   static const String _keyThemeMode = 'themeMode';
   static const String _keyHelpGiven = 'helpGiven';
   static const String _keyHelpReceived = 'helpReceived';
+  static const String _keyAvatarIndex = 'avatarIndex';
+  
+  // Available avatar options
+  static const List<Map<String, dynamic>> avatarOptions = [
+    {'icon': Icons.person, 'color': 0xFF6C5CE7, 'name': 'Default'},
+    {'icon': Icons.face, 'color': 0xFF00B894, 'name': 'Smile'},
+    {'icon': Icons.face_2, 'color': 0xFFE17055, 'name': 'Cool'},
+    {'icon': Icons.face_3, 'color': 0xFF0984E3, 'name': 'Happy'},
+    {'icon': Icons.face_4, 'color': 0xFFD63031, 'name': 'Chill'},
+    {'icon': Icons.face_5, 'color': 0xFFFDAA5D, 'name': 'Fun'},
+    {'icon': Icons.face_6, 'color': 0xFF00CEC9, 'name': 'Fresh'},
+    {'icon': Icons.sentiment_very_satisfied, 'color': 0xFFE84393, 'name': 'Joy'},
+    {'icon': Icons.emoji_emotions, 'color': 0xFFFFC312, 'name': 'Cheerful'},
+    {'icon': Icons.psychology, 'color': 0xFF9B59B6, 'name': 'Thinker'},
+    {'icon': Icons.self_improvement, 'color': 0xFF1ABC9C, 'name': 'Zen'},
+    {'icon': Icons.sports_esports, 'color': 0xFF3498DB, 'name': 'Gamer'},
+  ];
 
   bool _isInitialized = false;
+  bool _isInitializing = false;
   bool get isInitialized => _isInitialized;
 
-  // Initialize from SharedPreferences
+  // Initialize from SharedPreferences with thread-safety
   Future<void> init() async {
-    if (_isInitialized) return;
+    if (_isInitialized || _isInitializing) return;
+    _isInitializing = true;
     
-    final prefs = await SharedPreferences.getInstance();
-    
-    _isLoggedIn = prefs.getBool(_keyIsLoggedIn) ?? false;
-    _userName = prefs.getString(_keyUserName) ?? 'Pengguna Baik Hati';
-    _userEmail = prefs.getString(_keyUserEmail) ?? '';
-    _userPhone = prefs.getString(_keyUserPhone) ?? '';
-    _helpGiven = prefs.getInt(_keyHelpGiven) ?? 0;
-    _helpReceived = prefs.getInt(_keyHelpReceived) ?? 0;
-    
-    final themeModeIndex = prefs.getInt(_keyThemeMode) ?? 0;
-    _themeMode = ThemeMode.values[themeModeIndex];
-    
-    _isInitialized = true;
-    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      _isLoggedIn = prefs.getBool(_keyIsLoggedIn) ?? false;
+      _userName = prefs.getString(_keyUserName) ?? 'Pengguna Baik Hati';
+      _userEmail = prefs.getString(_keyUserEmail) ?? '';
+      _userPhone = prefs.getString(_keyUserPhone) ?? '';
+      _helpGiven = prefs.getInt(_keyHelpGiven) ?? 0;
+      _helpReceived = prefs.getInt(_keyHelpReceived) ?? 0;
+      _avatarIndex = prefs.getInt(_keyAvatarIndex) ?? 0;
+      
+      final themeModeIndex = prefs.getInt(_keyThemeMode) ?? 0;
+      _themeMode = ThemeMode.values[themeModeIndex.clamp(0, ThemeMode.values.length - 1)];
+      
+      _isInitialized = true;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('AppState init error: $e');
+    } finally {
+      _isInitializing = false;
+    }
   }
 
   // Theme
@@ -64,11 +90,25 @@ class AppState extends ChangeNotifier {
   String _userEmail = '';
   String _userPhone = '';
   bool _isLoggedIn = false;
+  int _avatarIndex = 0;
   
   String get userName => _userName;
   String get userEmail => _userEmail;
   String get userPhone => _userPhone;
   bool get isLoggedIn => _isLoggedIn;
+  int get avatarIndex => _avatarIndex;
+  
+  // Get current avatar data
+  Map<String, dynamic> get currentAvatar => avatarOptions[_avatarIndex.clamp(0, avatarOptions.length - 1)];
+  IconData get avatarIcon => currentAvatar['icon'] as IconData;
+  Color get avatarColor => Color(currentAvatar['color'] as int);
+  
+  Future<void> setAvatarIndex(int index) async {
+    _avatarIndex = index.clamp(0, avatarOptions.length - 1);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyAvatarIndex, _avatarIndex);
+    notifyListeners();
+  }
 
   Future<void> updateProfile({String? name, String? email, String? phone}) async {
     final prefs = await SharedPreferences.getInstance();

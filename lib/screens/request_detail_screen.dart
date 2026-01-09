@@ -33,29 +33,39 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
   Future<void> _calculateDistance() async {
     if (widget.request.latitude == null || widget.request.longitude == null) return;
     
+    if (!mounted) return;
     setState(() => _isLoadingDistance = true);
-    final position = await _locationService.getCurrentLocation();
     
-    if (position != null && mounted) {
-      final distance = _locationService.calculateDistance(
-        position.latitude, position.longitude,
-        widget.request.latitude!, widget.request.longitude!
-      );
+    try {
+      final position = await _locationService.getCurrentLocation();
       
-      // Calculate price estimate based on distance
-      final estimate = _pricingService.calculatePrice(
-        distanceKm: distance,
-        category: widget.request.category,
-      );
+      if (!mounted) return;
       
-      setState(() {
-        _distanceKm = distance;
-        _distanceText = _locationService.formatDistance(distance);
-        _priceEstimate = estimate;
-        _isLoadingDistance = false;
-      });
-    } else {
-      setState(() => _isLoadingDistance = false);
+      if (position != null) {
+        final distance = _locationService.calculateDistance(
+          position.latitude, position.longitude,
+          widget.request.latitude!, widget.request.longitude!
+        );
+        
+        // Calculate price estimate based on distance
+        final estimate = _pricingService.calculatePrice(
+          distanceKm: distance,
+          category: widget.request.category,
+        );
+        
+        setState(() {
+          _distanceKm = distance;
+          _distanceText = _locationService.formatDistance(distance);
+          _priceEstimate = estimate;
+          _isLoadingDistance = false;
+        });
+      } else {
+        setState(() => _isLoadingDistance = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingDistance = false);
+      }
     }
   }
 
@@ -721,7 +731,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
               TextButton(
                 onPressed: () {
                   Navigator.pop(context); // Close dialog
-                  Navigator.pop(this.context); // Go back to home
+                  Navigator.of(context).pop(); // Go back
                 },
                 child: const Text('Kembali'),
               ),
@@ -739,7 +749,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Gagal menerima penawaran'), backgroundColor: AppTheme.secondaryColor, behavior: SnackBarBehavior.floating),
+          SnackBar(content: const Text('Gagal menerima penawaran. Request mungkin sudah tidak tersedia.'), backgroundColor: AppTheme.secondaryColor, behavior: SnackBarBehavior.floating),
         );
       }
     }
@@ -747,7 +757,16 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
 
   void _openChatWithHelper(Map<String, dynamic> offer) {
     final helperName = offer['helperName'] ?? 'User';
-    final helperId = offer['helperId'] ?? '';
+    final helperId = offer['helperId'];
+    
+    // Validate helperId before navigation
+    if (helperId == null || helperId.toString().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text('Tidak dapat membuka chat'), backgroundColor: AppTheme.secondaryColor, behavior: SnackBarBehavior.floating),
+      );
+      return;
+    }
+    
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1107,6 +1126,18 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
   }
 
   void _showOfferDialog() {
+    // Auth guard - check if user is logged in
+    if (_firestoreService.currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Silakan login terlebih dahulu'),
+          backgroundColor: AppTheme.secondaryColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    
     PriceType selectedType = PriceType.voluntary;
     final priceController = TextEditingController();
     final messageController = TextEditingController();
@@ -1217,7 +1248,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
                       } else {
                         ScaffoldMessenger.of(this.context).showSnackBar(
                           SnackBar(
-                            content: const Text('Gagal mengirim penawaran. Coba lagi.'),
+                            content: const Text('Gagal mengirim penawaran. Request mungkin sudah tidak tersedia atau kamu sudah menawarkan.'),
                             backgroundColor: AppTheme.secondaryColor,
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -1325,11 +1356,14 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     Color color;
     String text;
     switch (widget.request.status) {
-      case HelpStatus.open: color = AppTheme.accentColor; text = 'Butuh Bantuan'; break;
-      case HelpStatus.negotiating: color = const Color(0xFFFF9F43); text = 'Negosiasi'; break;
-      case HelpStatus.inProgress: color = AppTheme.primaryColor; text = 'Sedang Dibantu'; break;
-      case HelpStatus.completed: color = Colors.grey; text = 'Selesai'; break;
-      case HelpStatus.cancelled: color = AppTheme.secondaryColor; text = 'Dibatalkan'; break;
+      case HelpStatus.open: color = AppTheme.accentColor; text = 'Butuh Bantuan';
+      case HelpStatus.negotiating: color = const Color(0xFFFF9F43); text = 'Negosiasi';
+      case HelpStatus.inProgress: color = AppTheme.primaryColor; text = 'Sedang Dibantu';
+      case HelpStatus.onTheWay: color = const Color(0xFF54A0FF); text = 'Dalam Perjalanan';
+      case HelpStatus.arrived: color = const Color(0xFF9B59B6); text = 'Sudah Sampai';
+      case HelpStatus.working: color = const Color(0xFFFF9F43); text = 'Dikerjakan';
+      case HelpStatus.completed: color = Colors.grey; text = 'Selesai';
+      case HelpStatus.cancelled: color = AppTheme.secondaryColor; text = 'Dibatalkan';
     }
     return Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)), child: Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)));
   }

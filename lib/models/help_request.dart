@@ -15,11 +15,14 @@ enum HelpCategory {
 }
 
 enum HelpStatus {
-  open,
+  open,         // Menunggu penolong
   negotiating,  // Sedang negosiasi
-  inProgress,
-  completed,
-  cancelled,
+  inProgress,   // Sedang dikerjakan
+  onTheWay,     // Penolong dalam perjalanan
+  arrived,      // Penolong sudah sampai
+  working,      // Sedang mengerjakan
+  completed,    // Selesai
+  cancelled,    // Dibatalkan
 }
 
 enum PaymentMethod {
